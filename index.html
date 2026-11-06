@@ -287,7 +287,7 @@ kbd{font:600 12px/1 var(--hud);color:var(--ink);background:rgba(236,228,210,.08)
     <div class="eyebrow">Tactical 1v1 · Browser build</div>
     <h1 class="logo">Quarry<span>Duel</span></h1>
     <p class="lede">Buy rounds. Real recoil. One-tap headshots. Fight a bot that hears your footsteps or play a friend on this same page. First to <span id="ledeRounds">8</span> rounds wins.</p>
-    <div class="spec"><span>Map <b>Quarry</b></span><span>Size <b>56 × 76 m</b></span><span>Lanes <b>Long · Mid · Yard</b></span></div>
+    <div class="spec"><span>Map <b id="mapName">Quarry</b></span><span>Size <b>56 × 76 m</b></span><span>Lanes <b id="mapLanes">Long · Mid · Yard</b></span></div><div class="spec" id="mapPick" style="margin-top:6px"></div>
     <div class="field"><span class="lbl">Bot skill</span>
       <div class="seg" id="diffSeg">
         <button type="button" data-d="recruit" aria-pressed="false"><b>Recruit</b><small>Reacts in 600 ms</small></button>
@@ -697,7 +697,7 @@ const HT={'#':5.5,'H':1.96,'b':.98,'w':1.2,'C':2.6,'K':2.6,'r':.92,'.':0};
 const grid=[];for(let z=0;z<H;z++)grid.push(new Array(W).fill('#'));
 const carve=(x0,z0,x1,z1,c='.')=>{for(let z=z0;z<=z1;z++)for(let x=x0;x<=x1;x++)grid[z][x]=c;};
 const put=(c,...pts)=>{for(const [x,z] of pts)grid[z][x]=c;};
-carve(1,1,6,36);carve(21,1,26,36);carve(8,1,19,5);carve(7,3,7,4);carve(20,3,20,4);
+const MAPS={quarry:{name:'Quarry',lane:'Long · Mid · Yard',tint:null,build:()=>{carve(1,1,6,36);carve(21,1,26,36);carve(8,1,19,5);carve(7,3,7,4);carve(20,3,20,4);
 carve(15,6,16,6);carve(11,7,16,30);carve(11,31,12,31);carve(8,32,19,36);carve(7,33,7,34);carve(20,33,20,34);
 carve(7,18,10,19);carve(17,12,20,13);carve(17,25,20,26);carve(7,23,10,23,'w');
 carve(13,17,14,21,'#');
@@ -706,7 +706,23 @@ put('H',[3,8],[5,9],[5,19],[2,26],[11,14],[26,16],[22,28],[9,32],[24,4]);
 put('w',[1,13],[2,13],[3,13],[14,24],[15,24],[16,24]);
 put('C',[22,8],[23,8],[22,9],[23,9],[22,10],[23,10]);
 put('K',[23,19],[24,19],[23,20],[24,20],[23,21],[24,21]);
-put('r',[6,30],[21,22],[19,1],[8,36],[26,6]);
+put('r',[6,30],[21,22],[19,1],[8,36],[26,6]);}},
+  depot:{name:'Depot',lane:'Open · Pillars · Containers',tint:{wall:0xa9b3b8},build:()=>{carve(1,1,26,36);
+    carve(12,16,15,21,'#');carve(5,8,8,10,'#');carve(19,8,22,10,'#');carve(5,27,8,29,'#');carve(19,27,22,29,'#');
+    carve(2,14,4,15,'C');carve(23,22,25,23,'K');carve(9,24,10,26,'C');carve(17,11,18,13,'K');
+    carve(2,22,3,22,'w');carve(24,14,25,14,'w');carve(10,6,17,6,'w');carve(10,31,17,31,'w');
+    put('H',[7,18],[20,19],[13,25],[14,12],[3,31],[24,5],[12,9],[15,28]);
+    put('b',[2,6],[25,31],[8,15],[19,22],[6,24],[21,13],[11,3],[16,34],[5,19],[22,18],[13,14],[14,23]);
+    put('r',[4,4],[23,33],[10,12],[17,25],[2,27],[25,9]);}},
+  canyon:{name:'Canyon',lane:'Twin lanes · Windows',tint:{wall:0xd9a37a},build:()=>{carve(1,1,26,5);carve(1,32,26,36);carve(1,6,8,31);carve(19,6,26,31);carve(9,6,18,31,'#');
+    carve(9,13,18,15);carve(9,22,18,24);carve(12,13,15,13,'w');carve(12,24,15,24,'w');carve(9,18,10,19);carve(17,18,18,19);
+    carve(3,10,4,11,'C');carve(22,26,23,27,'K');carve(4,20,5,21,'C');carve(21,16,22,17,'K');
+    put('H',[6,8],[21,29],[2,17],[25,20],[13,3],[14,34],[8,33],[19,4]);
+    put('b',[3,7],[24,30],[7,14],[20,23],[5,28],[22,9],[11,2],[16,35],[2,4],[25,33],[14,14],[13,23]);
+    put('r',[7,26],[20,11],[2,30],[25,6],[9,4],[18,34]);}},
+};
+let MAPID='quarry';try{const m=new URLSearchParams(location.search).get('map')||localStorage.getItem('qd_map');if(m&&MAPS[m])MAPID=m;}catch(e){}
+const MAPLOOK=MAPS[MAPID].tint||{};MAPS[MAPID].build();
 const cellH=(x,z)=>(x<0||z<0||x>=W||z>=H)?0:HT[grid[z][x]];
 const walkable=(x,z)=>x>=0&&z>=0&&x<W&&z<H&&HT[grid[z][x]]===0;
 const SPAWN_P=V3(28,0,70),SPAWN_B=V3(28,0,5.5);
@@ -810,6 +826,7 @@ function buildMap(){
   const mCap=stdMat(stone,{color:0xf2e6d0,roughness:realWall?.9:1});
   const mConc=stdMat(con,{roughness:realWall?.9:1});
   const mWood=stdMat(TX.wood,{normalScale:new THREE.Vector2(1.2,1.2)});
+  if(MAPLOOK.wall){mWall.color.setHex(MAPLOOK.wall);mWallDark.color.setHex(MAPLOOK.wall);mCap.color.setHex(MAPLOOK.wall);}
   const mWoodFrame=stdMat(TX.wood,{color:0x9a8670});
   const mCrate=RTX.crate&&RTX.crate.map?stdMat(RTX.crate,{roughness:.85}):null;
   const redC=rset('metal_sheet_red',null),greyC=rset('container_grey',null);
@@ -1636,7 +1653,7 @@ async function mpHost(){if(!MP.room||MP.role)return;initAudio();let c=newCode();
 function peerErr(e){const t=e&&e.type;if(t==='peer-unavailable')return'No match with that code is open. Check the code and that your friend is hosting.';
   if(t==='network'||t==='server-error'||t==='socket-error'||t==='socket-closed')return'Could not reach the matchmaking server. Check your internet and try again.';
   if(t==='browser-incompatible')return'This browser cannot do direct connections. Try Chrome Edge or Firefox.';return'Connection failed'+(t?' ('+t+')':'')+'. Try again.';}
-function inviteLink(){return location.origin+location.pathname+'#join-'+MP.code;}
+function inviteLink(){return location.origin+location.pathname+(MAPID!=='quarry'?'?map='+MAPID:'')+'#join-'+MP.code;}
 function mpJoin(code){code=String(code||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,4);if(!MP.room||MP.role||code.length!==4){if(code.length!==4)mpMsg('Enter the 4-letter code from your friend.');return;}
   initAudio();MP.role='guest';MP.joinCode=code;MP.opp=null;setPresence({nick:myNick(),join:code,host:null,opp:null,st:null,g:null});mpMsg('Joining. Waiting for the host.',false);renderMpList();mpStatus();
   if(MP.room.p2p){MP.room.onError=e=>{if(MP.role==='guest'&&!MP.on){mpMsg(peerErr(e));mpReset();}};MP.room.join(code).catch(e=>{if(MP.role==='guest'){mpMsg(peerErr(e));mpReset();}});}
@@ -2395,6 +2412,9 @@ async function boot(){
   // warm up shaders
   renderer.compile(scene,camera);renderer.compile(vmScene,vmCam);
   state='menu';pb.disabled=touchOnly;pb.textContent='Play vs bot';$('#friendBtn').disabled=touchOnly;applyAll();
+  (function(){const pk=$('#mapPick');if(!pk)return;$('#mapName').textContent=MAPS[MAPID].name;{const rs=document.querySelector('#radarBox small');if(rs)rs.textContent=MAPS[MAPID].name;}$('#mapLanes').textContent=MAPS[MAPID].lane;
+    for(const k in MAPS){const b=document.createElement('button');b.type='button';b.className=k===MAPID?'play':'ghost';b.style.cssText='padding:6px 14px;margin-right:8px;font-size:13px';b.textContent=MAPS[k].name;
+      b.addEventListener('click',()=>{if(k===MAPID)return;try{localStorage.setItem('qd_map',k);}catch(e){}const u=new URL(location.href);u.searchParams.set('map',k);location.href=u.toString();});pk.appendChild(b);}})();
   initRoom().then(()=>{const m=/^#join-([A-Z0-9]{4})$/i.exec(location.hash);if(m&&MP.room&&!touchOnly){openFriends();$('#mpCode').value=m[1].toUpperCase();mpJoin(m[1]);}});
   requestAnimationFrame(frame);
   window.__qd={playerFire,setPausedDbg:setPaused,MP,settings,setSetting,mpHost,mpJoin,openFriends,openSettings,dbg:{gripHand,curlFingers,handFrame,restorePose,orientHand,twoBoneIK,wpos,solveVMArms,setPaused,animBotReal,animBotDeathReal,vmRecoil,updateVM},vmCam,vmScene,vmRoot,REAL,RTX,GUNSPEC,ARMS:()=>ARMS,P,bot,get state(){return state;},set state(v){state=v;},scene,camera,vmModels,WEAPONS,beginPlay,startMatch,grid,settings,setScopeDbg:setScope,vm,get now(){return now;}};
