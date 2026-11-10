@@ -284,7 +284,7 @@ kbd{font:600 12px/1 var(--hud);color:var(--ink);background:rgba(236,228,210,.08)
 
 <div class="screen" id="menu">
   <div class="col">
-    <div class="eyebrow">Tactical 1v1 · Browser build</div>
+    <div class="eyebrow">Tactical 1v1 · Browser build · v7</div>
     <h1 class="logo">Quarry<span>Duel</span></h1>
     <p class="lede">Buy rounds. Real recoil. One-tap headshots. Fight a bot that hears your footsteps or play a friend on this same page. First to <span id="ledeRounds">8</span> rounds wins.</p>
     <div class="spec"><span>Map <b id="mapName">Quarry</b></span><span>Size <b>56 × 76 m</b></span><span>Lanes <b id="mapLanes">Long · Mid · Yard</b></span></div><div class="spec" id="mapPick" style="margin-top:6px"></div>
@@ -304,7 +304,7 @@ kbd{font:600 12px/1 var(--hud);color:var(--ink);background:rgba(236,228,210,.08)
       <div><kbd>C</kbd>Crouch</div>
       <div><kbd>Space</kbd>Jump</div><div><kbd>R</kbd>Reload</div>
       <div><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd>Switch</div><div><kbd>B</kbd>Buy menu</div>
-      <div><kbd>RMB</kbd> or <kbd>X</kbd>Aim / scope</div><div><kbd>Shift</kbd>Sprint</div><div><kbd>F</kbd>Inspect</div>
+      <div><kbd>RMB</kbd> or <kbd>X</kbd>Aim / scope (change in Settings · Mouse)</div><div><kbd>Shift</kbd>Sprint</div><div><kbd>F</kbd>Inspect</div>
       <div><kbd>Tab</kbd>Scores</div><div><kbd>Esc</kbd>Pause</div>
     </div>
   </div>
@@ -435,7 +435,7 @@ const PRESETS={
   medium:{rscale:1,shadows:'medium',ao:false,bloom:true,aa:'fxaa',sharpen:.2},
   high:{rscale:1,shadows:'high',ao:true,bloom:true,aa:'smaa',sharpen:.25},
   ultra:{rscale:1.4,shadows:'ultra',ao:true,bloom:true,aa:'smaa',sharpen:.3}};
-const DEFAULTS={v:2,diff:'recruit',gfx:'high',...PRESETS.high,fov:74,vmfov:62,bright:1,sat:1.05,cine:1,fps:false,
+const DEFAULTS={v:2,diff:'recruit',gfx:'high',...PRESETS.high,fov:74,vmfov:62,bright:1,sat:1.05,cine:1,aimKey:'KeyX',aimHold:false,fps:false,
   sens:1,zoomSens:1,invertY:false,xcol:'#a6f7b8',xsize:8,xgap:4,xthick:2,xdot:true,xoutline:true,xdyn:true,
   vol:.8,gunVol:1,stepVol:1,rounds:8,smoney:10000,rtime:95,radar:true,nick:''};
 const settings={...DEFAULTS};
@@ -2223,7 +2223,9 @@ canvas.addEventListener('mousedown',e=>{if(!inGame()||buyOpen)return;if(paused){
   if(e.button===0&&!alt){mouse.l=true;const w=WEAPONS[P.cur];if(!w.auto)playerFire();}
   if(alt){mouse.r=true;altFire(false);}});
 function altFire(toggle){const w=WEAPONS[P.cur];if(!P.alive)return;if(w.scope){if(P.reloading<=0)setScope((P.scoped+1)%3);}else if(w.melee)knifeAttack(true);else P.ads=toggle?!P.ads:true;}
-document.addEventListener('keydown',e=>{if(e.code==='KeyX'&&!e.repeat&&inGame()&&!paused&&!buyOpen)altFire(true);});
+document.addEventListener('keydown',e=>{if(e.code===settings.aimKey&&!e.repeat&&inGame()&&!paused&&!buyOpen){e.preventDefault();altFire(!settings.aimHold);}});
+document.addEventListener('keyup',e=>{if(e.code===settings.aimKey&&settings.aimHold)P.ads=false;});
+canvas.addEventListener('mousedown',e=>{if(e.button===1&&inGame()&&!paused&&!buyOpen){e.preventDefault();altFire(true);}});
 document.addEventListener('mouseup',e=>{if(e.button===0)mouse.l=false;if(e.button===2||(e.button===0&&mouse.rc)){mouse.r=false;mouse.rc=false;P.ads=false;}});
 document.addEventListener('contextmenu',e=>{if(inGame())e.preventDefault();});
 document.addEventListener('wheel',e=>{if(!inGame()||paused||buyOpen||!P.alive)return;const order=[P.inv[1],P.inv[2],'knife'].filter(Boolean);let i=order.indexOf(P.cur);i=(i+(e.deltaY>0?1:-1)+order.length)%order.length;switchWeapon(order[i]);},{passive:true});
@@ -2271,7 +2273,9 @@ const SETTINGS_UI={
     {k:'fps',t:'toggle',label:'Show FPS'}],
   controls:[{k:'sens',t:'range',label:'Mouse sensitivity',min:.1,max:4,step:.01,fmt:v=>v.toFixed(2)},
     {k:'zoomSens',t:'range',label:'Scoped sensitivity',hint:'Multiplier while zoomed',min:.2,max:1.6,step:.05,fmt:v=>v.toFixed(2)+'×'},
-    {k:'invertY',t:'toggle',label:'Invert mouse Y'}],
+    {k:'invertY',t:'toggle',label:'Invert mouse Y'},
+    {k:'aimKey',t:'chips',label:'Aim / scope key',hint:'Right mouse always works too',opts:[['KeyX','X'],['KeyE','E'],['KeyV','V'],['KeyZ','Z'],['AltLeft','Left Alt'],['ControlLeft','Left Ctrl']]},
+    {k:'aimHold',t:'toggle',label:'Hold key to aim',hint:'Off = press once to toggle'}],
   crosshair:[{k:'xpreview',t:'preview',label:'Preview'},
     {k:'xcol',t:'colors',label:'Color',opts:['#a6f7b8','#ffffff','#ffe14d','#4fd8ff','#ff5ad1','#ff4b4b']},
     {k:'xsize',t:'range',label:'Length',min:2,max:20,step:1,fmt:v=>v+' px'},
