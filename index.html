@@ -304,7 +304,7 @@ kbd{font:600 12px/1 var(--hud);color:var(--ink);background:rgba(236,228,210,.08)
       <div><kbd>Shift</kbd>Walk quietly</div><div><kbd>C</kbd>Crouch</div>
       <div><kbd>Space</kbd>Jump</div><div><kbd>R</kbd>Reload</div>
       <div><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd>Switch</div><div><kbd>B</kbd>Buy menu</div>
-      <div><kbd>RMB</kbd>Scope</div><div><kbd>F</kbd>Inspect</div>
+      <div><kbd>RMB</kbd>Scope / aim</div><div><kbd>F</kbd>Inspect</div>
       <div><kbd>Tab</kbd>Scores</div><div><kbd>Esc</kbd>Pause</div>
     </div>
   </div>
@@ -435,7 +435,7 @@ const PRESETS={
   medium:{rscale:1,shadows:'medium',ao:false,bloom:true,aa:'fxaa',sharpen:.2},
   high:{rscale:1,shadows:'high',ao:true,bloom:true,aa:'smaa',sharpen:.25},
   ultra:{rscale:1.4,shadows:'ultra',ao:true,bloom:true,aa:'smaa',sharpen:.3}};
-const DEFAULTS={v:2,diff:'veteran',gfx:'high',...PRESETS.high,fov:74,vmfov:62,bright:1,sat:1.05,fps:false,
+const DEFAULTS={v:2,diff:'recruit',gfx:'high',...PRESETS.high,fov:74,vmfov:62,bright:1,sat:1.05,cine:1,fps:false,
   sens:1,zoomSens:1,invertY:false,xcol:'#a6f7b8',xsize:8,xgap:4,xthick:2,xdot:true,xoutline:true,xdyn:true,
   vol:.8,gunVol:1,stepVol:1,rounds:8,smoney:10000,rtime:95,radar:true,nick:''};
 const settings={...DEFAULTS};
@@ -918,6 +918,8 @@ function buildMap(){
   ax.filter='blur(9px)';
   for(let z=0;z<H;z++)for(let x=0;x<W;x++){const h=cellH(x,z);if(!h)continue;ax.fillStyle=h>=5?'rgba(0,0,0,.6)':h>=1.9?'rgba(0,0,0,.5)':'rgba(0,0,0,.38)';const pad=h>=5?4:2;ax.fillRect(x*16-pad,z*16-pad,16+pad*2,16+pad*2);}
   ax.filter='none';
+  {const dr=mulberry(31);for(let i=0;i<260;i++){const x=dr()*ao.width,y=dr()*ao.height,r=10+dr()*46;const gr=ax.createRadialGradient(x,y,0,x,y,r);const a=.05+dr()*.1;gr.addColorStop(0,'rgba(60,45,30,'+a+')');gr.addColorStop(1,'rgba(60,45,30,0)');ax.fillStyle=gr;ax.fillRect(x-r,y-r,r*2,r*2);}
+   ax.strokeStyle='rgba(50,40,30,.07)';ax.lineWidth=7;for(let i=0;i<14;i++){const y=dr()*ao.height;ax.beginPath();ax.moveTo(0,y);ax.bezierCurveTo(ao.width*.3,y+dr()*80-40,ao.width*.6,y+dr()*80-40,ao.width,y+dr()*60-30);ax.stroke();}}
   const aoTex=new THREE.CanvasTexture(ao);
   const fGeo=new THREE.PlaneGeometry(W*S,H*S,1,1);fGeo.rotateX(-Math.PI/2);fGeo.translate(W*S/2,0,H*S/2);
   const mFloor=new THREE.MeshStandardMaterial({map:floorSet.map,normalMap:floorSet.normalMap,roughnessMap:floorSet.roughnessMap,aoMap:aoTex,aoMapIntensity:1,lightMap:aoTex,lightMapIntensity:0,normalScale:new THREE.Vector2(1.3,1.3),envMapIntensity:.5});
@@ -1475,9 +1477,9 @@ const WEAPONS={
   lb:{id:'lb',name:'.338 Sniper',slot:1,price:4750,dmg:115,pen:.975,falloff:.99,rpm:41,auto:false,mag:5,reserve:30,reload:3.5,speed:4.6,base:.075,scoped:.0006,crouch:.065,move:.24,air:.4,perShot:0,recov:1.4,kick:.07,hkick:.012,reward:100,scope:true},
 };
 const DIFF={
-  recruit:{react:.6,turn:3.2,err:.13,errHalf:.42,head:.08,spray:.15,tol:2.2,strafe:.3},
-  veteran:{react:.34,turn:6,err:.075,errHalf:.24,head:.28,spray:.55,tol:1.5,strafe:.6},
-  elite:{react:.2,turn:10,err:.045,errHalf:.14,head:.52,spray:.85,tol:1.1,strafe:.9},
+  recruit:{react:1.0,turn:2.0,err:.2,errHalf:.55,head:.03,spray:.05,tol:2.8,strafe:.12},
+  veteran:{react:.62,turn:3.6,err:.12,errHalf:.36,head:.14,spray:.3,tol:2.0,strafe:.35},
+  elite:{react:.36,turn:6.5,err:.075,errHalf:.22,head:.32,spray:.6,tol:1.5,strafe:.6},
 };
 function makeEnt(team){return{team,p:V3(),v:V3(),r:.33,eye:1.62,crouch:0,onGround:true,hp:100,armor:0,helmet:false,alive:true,money:800,
   inv:{1:null,2:'p9',3:'knife'},cur:'p9',prev:'knife',ammo:{},recoilP:0,recoilY:0,shotIdx:0,lastShot:-9,nextFire:0,reloading:0,scoped:0,
@@ -1903,7 +1905,7 @@ function updateCamera(dt){
   if(state==='menu'||state==='loading'||state==='over'){const t=performance.now()*.00004;camera.position.set(MAPC.x+Math.cos(t)*62,30,MAPC.z+Math.sin(t)*62);camera.lookAt(MAPC.x,0,MAPC.z);return;}
   camera.position.set(P.p.x,P.p.y+P.eye,P.p.z);
   camera.rotation.set(P.pitch+P.recoilP*.48,P.yaw+P.recoilY*.48,P.alive?0:-.5*ss(0,.7,P.deathT));
-  const tf=P.scoped===2?12:P.scoped===1?34:settings.fov;fovNow=lerp(fovNow,tf,1-Math.exp(-dt*22));if(Math.abs(camera.fov-fovNow)>.01){camera.fov=fovNow;camera.updateProjectionMatrix();}
+  const tf=P.scoped===2?12:P.scoped===1?34:(P.ads&&!WEAPONS[P.cur].melee&&!WEAPONS[P.cur].scope)?settings.fov*.72:settings.fov;fovNow=lerp(fovNow,tf,1-Math.exp(-dt*22));if(Math.abs(camera.fov-fovNow)>.01){camera.fov=fovNow;camera.updateProjectionMatrix();}
 }
 
 /* ---------- first-person animation for the downloaded guns ---------- */
@@ -2206,12 +2208,12 @@ function setPaused(v){paused=v;$('#pause').hidden=!v;if(v)$('#pauseEyebrow').tex
 document.addEventListener('pointerlockchange',()=>{locked=document.pointerLockElement===canvas;if(locked){setPaused(false);}else if(inGame()&&!buyOpen&&state!=='over')setPaused(true);});
 document.addEventListener('pointerlockerror',()=>{lockFallback=true;setPaused(false);});
 document.addEventListener('mousemove',e=>{if(!inGame()||paused||buyOpen||!P.alive)return;if(!locked&&!lockFallback)return;
-  const s=settings.sens*.0021*(P.scoped===2?.2*settings.zoomSens:P.scoped===1?.45*settings.zoomSens:1);P.yaw-=e.movementX*s;P.pitch=clamp(P.pitch-e.movementY*s*(settings.invertY?-1:1),-1.5,1.5);
+  const s=settings.sens*.0021*(P.scoped===2?.2*settings.zoomSens:P.scoped===1?.45*settings.zoomSens:P.ads?.75:1);P.yaw-=e.movementX*s;P.pitch=clamp(P.pitch-e.movementY*s*(settings.invertY?-1:1),-1.5,1.5);
   vm.swayX=clamp(vm.swayX-e.movementX*.00005,-.03,.03);vm.swayY=clamp(vm.swayY+e.movementY*.00005,-.03,.03);});
 canvas.addEventListener('mousedown',e=>{if(!inGame()||buyOpen)return;if(paused){requestLock();if(lockFallback)setPaused(false);return;}if(!locked&&!lockFallback){requestLock();return;}
   if(e.button===0){mouse.l=true;const w=WEAPONS[P.cur];if(!w.auto)playerFire();}
-  if(e.button===2){mouse.r=true;const w=WEAPONS[P.cur];if(w.scope&&P.reloading<=0&&P.alive)setScope((P.scoped+1)%3);else if(w.melee)knifeAttack(true);}});
-document.addEventListener('mouseup',e=>{if(e.button===0)mouse.l=false;if(e.button===2)mouse.r=false;});
+  if(e.button===2){mouse.r=true;const w=WEAPONS[P.cur];if(w.scope&&P.reloading<=0&&P.alive)setScope((P.scoped+1)%3);else if(w.melee)knifeAttack(true);else if(P.alive)P.ads=true;}});
+document.addEventListener('mouseup',e=>{if(e.button===0)mouse.l=false;if(e.button===2){mouse.r=false;P.ads=false;}});
 document.addEventListener('contextmenu',e=>{if(inGame())e.preventDefault();});
 document.addEventListener('wheel',e=>{if(!inGame()||paused||buyOpen||!P.alive)return;const order=[P.inv[1],P.inv[2],'knife'].filter(Boolean);let i=order.indexOf(P.cur);i=(i+(e.deltaY>0?1:-1)+order.length)%order.length;switchWeapon(order[i]);},{passive:true});
 document.addEventListener('keydown',e=>{
@@ -2254,6 +2256,7 @@ const SETTINGS_UI={
     {k:'vmfov',t:'range',label:'Gun field of view',min:50,max:80,step:1,fmt:v=>v+'°'},
     {k:'bright',t:'range',label:'Brightness',min:.6,max:1.5,step:.02,fmt:pct},
     {k:'sat',t:'range',label:'Color saturation',min:0,max:1.6,step:.05,fmt:pct},
+    {k:'cine',t:'range',label:'Cinematic look',min:0,max:1.5,step:.05,fmt:pct},
     {k:'fps',t:'toggle',label:'Show FPS'}],
   controls:[{k:'sens',t:'range',label:'Mouse sensitivity',min:.1,max:4,step:.01,fmt:v=>v.toFixed(2)},
     {k:'zoomSens',t:'range',label:'Scoped sensitivity',hint:'Multiplier while zoomed',min:.2,max:1.6,step:.05,fmt:v=>v.toFixed(2)+'×'},
@@ -2278,7 +2281,7 @@ let setTab='video',setFrom='menu',rebuildT=null;
 function applyCrosshair(){for(const el of document.querySelectorAll('.xh')){el.style.setProperty('--xc',settings.xcol);el.style.setProperty('--xs',settings.xsize+'px');el.style.setProperty('--xt',settings.xthick+'px');el.classList.toggle('nodot',!settings.xdot);el.classList.toggle('nool',!settings.xoutline);}
   const pv=document.querySelector('.xprev .xh');if(pv)pv.style.setProperty('--gap',settings.xgap+'px');}
 function applyAll(){applyCrosshair();$('#radarBox').hidden=!settings.radar;$('#fps').hidden=!settings.fps;$('#ledeRounds').textContent=settings.rounds;if(master)master.gain.value=settings.vol;
-  renderer.toneMappingExposure=.92*settings.bright;if(gradePass){gradePass.uniforms.sharp.value=settings.sharpen;gradePass.uniforms.sat.value=settings.sat;}
+  renderer.toneMappingExposure=.92*settings.bright;if(gradePass){gradePass.uniforms.sharp.value=settings.sharpen;gradePass.uniforms.sat.value=settings.sat;gradePass.uniforms.cine.value=settings.cine;}
   vmCam.fov=settings.vmfov;vmCam.updateProjectionMatrix();if(typeof mpRules==='function')mpRules();}
 function setSetting(k,v){
   if(k==='gfx'){if(v==='custom')return;settings.gfx=v;Object.assign(settings,PRESETS[v]);}
@@ -2339,13 +2342,31 @@ if(touchOnly)$('#touchNote').hidden=false;
 let composer=null,gtao=null,bloom=null;
 class ViewmodelPass extends Pass{constructor(){super();this.needsSwap=false;}
   render(r,writeBuffer,readBuffer){if(!vmRoot.visible)return;const ac=r.autoClear;r.autoClear=false;r.setRenderTarget(this.renderToScreen?null:readBuffer);r.clearDepth();r.render(vmScene,vmCam);r.autoClear=ac;}}
-const GradeShader={uniforms:{tDiffuse:{value:null},res:{value:new THREE.Vector2(1,1)},sharp:{value:.25},sat:{value:1}},
+
+/* drifting dust motes in the sun */
+let dustPts=null;
+function updateDust(dt){
+  if(!scene||typeof P==='undefined')return;
+  if(!dustPts){const n=700,pos=new Float32Array(n*3),rr=mulberry(5);for(let i=0;i<n;i++){pos[i*3]=rr()*W*S;pos[i*3+1]=.3+rr()*7;pos[i*3+2]=rr()*H*S;}
+    const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+    const c=document.createElement('canvas');c.width=c.height=32;const x=c.getContext('2d');const gr=x.createRadialGradient(16,16,0,16,16,16);gr.addColorStop(0,'rgba(255,240,215,1)');gr.addColorStop(1,'rgba(255,240,215,0)');x.fillStyle=gr;x.fillRect(0,0,32,32);
+    dustPts=new THREE.Points(g,new THREE.PointsMaterial({map:new THREE.CanvasTexture(c),size:.07,transparent:true,opacity:.55,depthWrite:false,blending:THREE.AdditiveBlending,sizeAttenuation:true}));dustPts.frustumCulled=false;scene.add(dustPts);}
+  dustPts.visible=settings.shadows!=='off'&&settings.shadows!=='low';
+  if(!dustPts.visible)return;
+  const a=dustPts.geometry.attributes.position,t=performance.now()*.0003;
+  for(let i=0;i<a.count;i+=1){let x=a.getX(i)+Math.sin(t+i)*.12*dt+.18*dt,y=a.getY(i)+Math.cos(t*1.3+i*.7)*.06*dt,z=a.getZ(i)+Math.cos(t+i*.3)*.1*dt;if(x>W*S)x=0;if(y>7.3)y=.3;if(y<.3)y=7;if(z>H*S)z=0;if(z<0)z=H*S;a.setXYZ(i,x,y,z);}
+  a.needsUpdate=true;
+}
+const GradeShader={uniforms:{tDiffuse:{value:null},res:{value:new THREE.Vector2(1,1)},sharp:{value:.25},sat:{value:1},cine:{value:1},time:{value:0}},
   vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
-  fragmentShader:`uniform sampler2D tDiffuse;uniform vec2 res;uniform float sharp,sat;varying vec2 vUv;
-  void main(){vec2 px=1.0/res;vec3 c=texture2D(tDiffuse,vUv).rgb;
+  fragmentShader:`uniform sampler2D tDiffuse;uniform vec2 res;uniform float sharp,sat,cine,time;varying vec2 vUv;
+  void main(){vec2 px=1.0/res;vec2 qq=vUv-.5;float ab=cine*.0011*dot(qq,qq)*4.;vec3 c=vec3(texture2D(tDiffuse,vUv-qq*ab*2.).r,texture2D(tDiffuse,vUv).g,texture2D(tDiffuse,vUv+qq*ab*2.).b);
     vec3 n=texture2D(tDiffuse,vUv+vec2(px.x,0.)).rgb+texture2D(tDiffuse,vUv-vec2(px.x,0.)).rgb+texture2D(tDiffuse,vUv+vec2(0.,px.y)).rgb+texture2D(tDiffuse,vUv-vec2(0.,px.y)).rgb;
     vec3 d=c-n*.25;float lc=max(max(abs(d.r),abs(d.g)),abs(d.b));c+=d*sharp*1.8*(1.-smoothstep(.12,.45,lc));
     float l=dot(c,vec3(.2126,.7152,.0722));c=mix(vec3(l),c,sat);
+    vec3 sc=c*c*(3.-2.*c);c=mix(c,sc,.55*cine);
+    float ll=dot(c,vec3(.2126,.7152,.0722));c+=cine*((1.-smoothstep(0.,.45,ll))*vec3(-.012,.004,.02)+smoothstep(.5,1.,ll)*vec3(.03,.014,-.012));
+    float g=fract(sin(dot(vUv*res+time,vec2(12.9898,78.233)))*43758.5453);c+=(g-.5)*.028*cine;
     vec2 q=vUv-.5;c*=1.-.22*dot(q,q)*1.7;
     gl_FragColor=vec4(clamp(c,0.,1.),1.);}`};
 let gradePass=null;
@@ -2362,7 +2383,7 @@ function buildComposer(){
   composer.addPass(new OutputPass());
   if(settings.aa==='smaa')composer.addPass(new SMAAPass(w*pr,h*pr));
   else if(settings.aa==='fxaa'){const fx=new ShaderPass(FXAAShader);fx.material.uniforms.resolution.value.set(1/(w*pr),1/(h*pr));composer.addPass(fx);}
-  gradePass=new ShaderPass(GradeShader);gradePass.uniforms.res.value.set(w*pr,h*pr);gradePass.uniforms.sharp.value=settings.sharpen;gradePass.uniforms.sat.value=settings.sat;composer.addPass(gradePass);
+  gradePass=new ShaderPass(GradeShader);gradePass.uniforms.res.value.set(w*pr,h*pr);gradePass.uniforms.sharp.value=settings.sharpen;gradePass.uniforms.sat.value=settings.sat;gradePass.uniforms.cine.value=settings.cine;composer.addPass(gradePass);
   const sm={off:0,low:1024,medium:2048,high:4096,ultra:4096}[settings.shadows]??2048;sunLight.castShadow=sm>0;
   if(sm){sunLight.shadow.mapSize.setScalar(sm);sunLight.shadow.radius=settings.shadows==='ultra'?2.5:1;if(sunLight.shadow.map){sunLight.shadow.map.dispose();sunLight.shadow.map=null;}}
   renderer.toneMappingExposure=.92*settings.bright;
@@ -2387,6 +2408,8 @@ function frame(t){
     stepFX(dt);refreshHUD(false);updateCrosshair();drawRadar();if(!$('#board').hidden)updateBoard();
   }else if(state==='menu'||state==='over'){bot.rig&&animBot(dt,0);if(FX.sparks)stepFX(dt);}
   updateCamera(dt);updateVM(dt);updateListener();
+  updateDust(dt);
+  if(gradePass)gradePass.uniforms.time.value=(performance.now()%1e5)*.001;
   if(composer)composer.render(dt);
   if(settings.fps){fpsN++;fpsT+=performance.now()-t0f;if(t-fpsLast>500){$('#fps').textContent=Math.round(fpsN*1000/(t-fpsLast))+' FPS';fpsN=0;fpsLast=t;}}
 }
