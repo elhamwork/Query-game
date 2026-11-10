@@ -301,10 +301,10 @@ kbd{font:600 12px/1 var(--hud);color:var(--ink);background:rgba(236,228,210,.08)
     <div class="btns"><button class="ghost" id="settingsBtn" type="button">Settings</button><button class="ghost" id="creditsBtn" type="button">Credits</button></div>
     <div class="keys">
       <div><kbd>WASD</kbd>Move</div><div><kbd>Mouse</kbd>Aim and fire</div>
-      <div><kbd>Shift</kbd>Walk quietly</div><div><kbd>C</kbd>Crouch</div>
+      <div><kbd>C</kbd>Crouch</div>
       <div><kbd>Space</kbd>Jump</div><div><kbd>R</kbd>Reload</div>
       <div><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd>Switch</div><div><kbd>B</kbd>Buy menu</div>
-      <div><kbd>RMB</kbd>Scope / aim</div><div><kbd>F</kbd>Inspect</div>
+      <div><kbd>RMB</kbd> or <kbd>X</kbd>Aim / scope</div><div><kbd>Shift</kbd>Sprint</div><div><kbd>F</kbd>Inspect</div>
       <div><kbd>Tab</kbd>Scores</div><div><kbd>Esc</kbd>Pause</div>
     </div>
   </div>
@@ -1175,6 +1175,7 @@ const vmModels={};
 let vmSun;
 const VMPOS={k7:[.16,-.2,-.44],l4:[.16,-.198,-.44],v9:[.15,-.19,-.42],lb:[.16,-.205,-.43],p9:[.14,-.17,-.42],h50:[.14,-.175,-.43],knife:[.17,-.19,-.4]};
 const VMROT={};
+const ADSPOS={};
 let ARMS=null;
 function rigSides(find,names){
   return s=>{const n=names(s);const h={up:find(n.up),lo:find(n.lo),hand:find(n.hand),mid:find(n.mid),thumb:find(n.thumb),
@@ -1192,7 +1193,7 @@ function buildViewmodelsReal(){
   for(const id in GUNSPEC){const sp=GUNSPEC[id];const gun=makeRealGun(id);gun.traverse(o=>{if(o.isMesh){o.castShadow=false;o.frustumCulled=false;if(o.material&&!o.material.__vm){o.material.envMapIntensity=.45;o.material.__vm=1;}}});
     const r=new THREE.Group();r.add(gun);
     const info={g:gun,real:true,spec:sp,parts:gun.userData.parts||{},muzzle:V3(...sp.muzzle),eject:sp.eject?V3(...sp.eject):null,knife:id==='knife',two:!!sp.lh,pistol:id==='p9'||id==='h50',boltT:0,pumpT:0,slideT:0,slideLocked:false};
-    const T=V3(...sp.vm).sub(V3(...sp.rh.p).applyEuler(new THREE.Euler(...sp.vr)));VMPOS[id]=[T.x,T.y,T.z];VMROT[id]=sp.vr;
+    const T=V3(...sp.vm).sub(V3(...sp.rh.p).applyEuler(new THREE.Euler(...sp.vr)));VMPOS[id]=[T.x,T.y,T.z];VMROT[id]=sp.vr;ADSPOS[id]=[0,-(sp.muzzle[1]+(sp.sight||.03)),.05];
     r.visible=false;vmRoot.add(r);vmModels[id]={root:r,info};}
   vmScene.add(new THREE.HemisphereLight(0xf2ecdf,0x5c4a36,1.0));
   vmSun=new THREE.DirectionalLight(0xfff0d8,2.6);vmScene.add(vmSun);
@@ -1504,7 +1505,8 @@ function inaccuracy(e,w){
   if(w.melee)return 0;let base=w.base;
   if(w.scope){base=e.scoped?w.scoped:w.base;if(e.crouch>.5)base=e.scoped?w.scoped*.8:w.crouch;}else if(e.crouch>.5)base=w.crouch;
   const hs=Math.hypot(e.v.x,e.v.z),mv=w.move*clamp((hs/w.speed-.3)/.7,0,1),air=e.onGround?0:w.air;
-  return base+mv+air+w.perShot*Math.min(e.shotIdx,12);
+  const ak=(e===P&&typeof adsK==='number')?adsK:0;
+  return (base*(1-.55*ak))+mv*(1-.3*ak)+air+w.perShot*Math.min(e.shotIdx,12)*(1-.25*ak);
 }
 function kick(e,w){const i=e.shotIdx;const v=w.kick*(i<=1?.55:i<=9?1:.42);let h;
   if(i<=3)h=(Math.random()-.5)*w.hkick;else if(i<=11)h=-w.hkick*.85+(Math.random()-.5)*w.hkick*.6;else h=Math.sin(i*.7)*w.hkick*1.6;
@@ -1877,11 +1879,13 @@ function knifeAttack(heavy){
 function muzzleVM(){const mdl=vmModels[P.cur];if(!mdl)return;mdl.info.g.updateMatrixWorld(true);const p=mdl.info.g.localToWorld(mdl.info.muzzle.clone());
   FX.vmFlash.position.copy(p);FX.vmFlash.visible=true;FX.vmFlash.userData.t=.045;FX.vmFlash.material.rotation=Math.random()*TAU;FX.vmFlash.scale.setScalar(P.cur==='lb'||P.cur==='h50'?.24:.16);FX.vmLight.position.copy(p);
   if(mdl.info.eject&&P.cur!=='lb'){const s=FX.shells.find(q=>!q.m.visible)||FX.shells[0];s.m.visible=true;s.t=.6;s.m.position.copy(mdl.info.g.localToWorld(mdl.info.eject.clone()));s.v.set(rand(.7,1.1),rand(.6,1),rand(.1,.3));s.w.set(rand(10,20),0,rand(10,20));}}
+let adsK=0,sprintK=0,camRoll=0;
+function canADS(){const w=WEAPONS[P.cur];return P.ads&&P.alive&&!w.melee&&!w.scope&&P.reloading<=0&&vm.drawT>.8;}
 function updatePlayer(dt){
   const wantC=!!keys.KeyC&&P.alive;P.crouch=clamp(P.crouch+(wantC?1:-1)*dt*7,0,1);P.eye=lerp(1.62,1.12,P.crouch);
   if(!P.alive){P.deathT+=dt;P.eye=lerp(1.62,.32,ss(0,.7,P.deathT));P.v.set(0,0,0);return;}
-  const w=WEAPONS[P.cur];let maxS=w.speed*(P.scoped?.6:1);const walking=keys.ShiftLeft||keys.ShiftRight;
-  if(walking)maxS*=.52;if(P.crouch>.5)maxS*=.34;if(state==='freeze'||buyOpen)maxS=0;
+  const w=WEAPONS[P.cur];let maxS=w.speed*(P.scoped?.6:1);const fwdKey=keys.KeyW&&!keys.KeyS;const sprinting=(keys.ShiftLeft||keys.ShiftRight)&&fwdKey&&P.onGround&&P.crouch<.3&&!P.scoped&&!canADS()&&!mouse.l&&P.reloading<=0;P.sprint=sprinting;
+  if(sprinting)maxS*=1.32;if(canADS())maxS*=.62;adsK=clamp(adsK+(canADS()?1:-1)*dt*7.5,0,1);sprintK=clamp(sprintK+(sprinting&&Math.hypot(P.v.x,P.v.z)>3?1:-1)*dt*5,0,1);if(P.crouch>.5)maxS*=.34;if(state==='freeze'||buyOpen)maxS=0;
   const fx=(keys.KeyW?1:0)-(keys.KeyS?1:0),sx=(keys.KeyD?1:0)-(keys.KeyA?1:0);const sy=Math.sin(P.yaw),cy=Math.cos(P.yaw);
   let wx=-sy*fx+cy*sx,wz=-cy*fx-sy*sx;const wl=Math.hypot(wx,wz);if(wl>0){wx/=wl;wz/=wl;}
   const tx=wx*maxS,tz=wz*maxS;
@@ -1904,8 +1908,9 @@ function updatePlayer(dt){
 function updateCamera(dt){
   if(state==='menu'||state==='loading'||state==='over'){const t=performance.now()*.00004;camera.position.set(MAPC.x+Math.cos(t)*62,30,MAPC.z+Math.sin(t)*62);camera.lookAt(MAPC.x,0,MAPC.z);return;}
   camera.position.set(P.p.x,P.p.y+P.eye,P.p.z);
-  camera.rotation.set(P.pitch+P.recoilP*.48,P.yaw+P.recoilY*.48,P.alive?0:-.5*ss(0,.7,P.deathT));
-  const tf=P.scoped===2?12:P.scoped===1?34:(P.ads&&!WEAPONS[P.cur].melee&&!WEAPONS[P.cur].scope)?settings.fov*.5:settings.fov;fovNow=lerp(fovNow,tf,1-Math.exp(-dt*22));if(Math.abs(camera.fov-fovNow)>.01){camera.fov=fovNow;camera.updateProjectionMatrix();}
+  {const sy2=Math.sin(P.yaw),cy2=Math.cos(P.yaw),lat2=(P.v.x*cy2-P.v.z*sy2)/5.5;camRoll=lerp(camRoll,-lat2*.022*(1-adsK),1-Math.exp(-dt*8));}
+  camera.rotation.set(P.pitch+P.recoilP*.48+Math.sin(vm.bob*2)*.0035*sprintK,P.yaw+P.recoilY*.48+Math.sin(vm.bob)*.003*sprintK,P.alive?camRoll:-.5*ss(0,.7,P.deathT));
+  const tf=P.scoped===2?12:P.scoped===1?34:(P.ads&&!WEAPONS[P.cur].melee&&!WEAPONS[P.cur].scope)?settings.fov*.62:settings.fov+6*sprintK;fovNow=lerp(fovNow,tf,1-Math.exp(-dt*22));if(Math.abs(camera.fov-fovNow)>.01){camera.fov=fovNow;camera.updateProjectionMatrix();}
 }
 
 /* ---------- first-person animation for the downloaded guns ---------- */
@@ -1995,8 +2000,11 @@ function updateVMReal(dt,md,info,w){
     else{const e=bell(u,0,1,.28),sw=ss(.06,.42,u)*2-1,d=vm.slashDir||1;aw+=sw*.9*d*e;ar+=(-sw*.55-.2)*d*e;ax+=(-sw*.14)*d*e;az-=.07*e*(1-Math.abs(sw));ay+=.03*e;}}
   // inspect
   if(vm.inspect>0){vm.inspect-=dt;const t=1-vm.inspect/2.4,k=ss(0,.2,t)*(1-ss(.8,1,t)),flip=ss(.4,.6,t);aw-=lerp(1.0,-.2,flip)*k;ar+=lerp(.45,-.6,flip)*k;ax-=.06*k;ay+=.035*k;az+=.03*k;}
-  md.root.position.set(base[0]+SPR.p.x+ax,base[1]+SPR.p.y+ay,base[2]+SPR.p.z+az);
-  md.root.rotation.set(br[0]+SPR.r.x+ap,br[1]+SPR.r.y+aw,br[2]+SPR.r.z+ar);
+  {const k=adsK*adsK*(3-2*adsK),A=ADSPOS[P.cur]||[0,-.1,.04];const q=1-k*.82;
+   const sk=sprintK*sprintK*(3-2*sprintK)*(1-k);const two=info.two&&!info.pistol;
+   const px=lerp(base[0]+ax,A[0],k)+SPR.p.x*q+sk*(two?-.06:.01),py=lerp(base[1]+ay,A[1],k)+SPR.p.y*q+sk*(two?-.035:-.05)+Math.abs(Math.sin(vm.bob))*.012*sk,pz=lerp(base[2]+az,base[2]+A[2],k)+SPR.p.z+sk*.03;
+   md.root.position.set(px,py,pz);
+   md.root.rotation.set(lerp(br[0]+ap,0,k)+SPR.r.x*(1-k*.5)+sk*(two?-.12:-.55),lerp(br[1]+aw,0,k)+SPR.r.y*q+sk*(two?.75:.1),lerp(br[2]+ar,0,k)+SPR.r.z*q+sk*(two?.28:0));}
   md.root.updateMatrixWorld(true);solveVMArmsEx(info,R,L);
   const sd=sunDir.clone().applyAxisAngle(Y_AXIS,-P.yaw);vmSun.position.copy(sd);
 }
@@ -2178,7 +2186,7 @@ function refreshHUD(force){
   if(buyOpen){setT('shopMoney','$'+P.money);setT('shopTime',canBuy()?(bt+' s left'):'Buy time over');}
 }
 function updateCrosshair(){const w=WEAPONS[P.cur];const inacc=w.melee?0:inaccuracy(P,w);const px=inacc/Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*innerHeight/2;
-  $('#xhair').style.setProperty('--gap',(settings.xgap+(settings.xdyn?Math.min(80,px):0))+'px');$('#xhair').style.display=(P.scoped||!P.alive)?'none':'';}
+  $('#xhair').style.setProperty('--gap',(settings.xgap+(settings.xdyn?Math.min(80,px):0))+'px');$('#xhair').style.display=(P.scoped||!P.alive||adsK>.5||sprintK>.6)?'none':'';}
 let bannerTO;
 function banner(t,sub,cls,dur){const w=$('#bannerWrap');w.innerHTML=`<div class="banner ${cls}"><h2></h2><p></p></div>`;w.querySelector('h2').textContent=t;w.querySelector('p').textContent=sub;clearTimeout(bannerTO);bannerTO=setTimeout(()=>{w.innerHTML='';},dur*1000);}
 function feed(mine,wid,head){const el=document.createElement('div');el.className='kf'+(mine?' mine':'');
@@ -2208,12 +2216,15 @@ function setPaused(v){paused=v;$('#pause').hidden=!v;if(v)$('#pauseEyebrow').tex
 document.addEventListener('pointerlockchange',()=>{locked=document.pointerLockElement===canvas;if(locked){setPaused(false);}else if(inGame()&&!buyOpen&&state!=='over')setPaused(true);});
 document.addEventListener('pointerlockerror',()=>{lockFallback=true;setPaused(false);});
 document.addEventListener('mousemove',e=>{if(!inGame()||paused||buyOpen||!P.alive)return;if(!locked&&!lockFallback)return;
-  const s=settings.sens*.0021*(P.scoped===2?.2*settings.zoomSens:P.scoped===1?.45*settings.zoomSens:P.ads?.55:1);P.yaw-=e.movementX*s;P.pitch=clamp(P.pitch-e.movementY*s*(settings.invertY?-1:1),-1.5,1.5);
+  const s=settings.sens*.0021*(P.scoped===2?.2*settings.zoomSens:P.scoped===1?.45*settings.zoomSens:P.ads?.7:1);P.yaw-=e.movementX*s;P.pitch=clamp(P.pitch-e.movementY*s*(settings.invertY?-1:1),-1.5,1.5);
   vm.swayX=clamp(vm.swayX-e.movementX*.00005,-.03,.03);vm.swayY=clamp(vm.swayY+e.movementY*.00005,-.03,.03);});
 canvas.addEventListener('mousedown',e=>{if(!inGame()||buyOpen)return;if(paused){requestLock();if(lockFallback)setPaused(false);return;}if(!locked&&!lockFallback){requestLock();if(e.button!==2)return;}
-  if(e.button===0){mouse.l=true;const w=WEAPONS[P.cur];if(!w.auto)playerFire();}
-  if(e.button===2){mouse.r=true;const w=WEAPONS[P.cur];if(w.scope&&P.reloading<=0&&P.alive)setScope((P.scoped+1)%3);else if(w.melee)knifeAttack(true);else if(P.alive)P.ads=true;}});
-document.addEventListener('mouseup',e=>{if(e.button===0)mouse.l=false;if(e.button===2){mouse.r=false;P.ads=false;}});
+  const alt=e.button===2||(e.button===0&&e.ctrlKey);mouse.rc=alt&&e.button===0;
+  if(e.button===0&&!alt){mouse.l=true;const w=WEAPONS[P.cur];if(!w.auto)playerFire();}
+  if(alt){mouse.r=true;altFire(false);}});
+function altFire(toggle){const w=WEAPONS[P.cur];if(!P.alive)return;if(w.scope){if(P.reloading<=0)setScope((P.scoped+1)%3);}else if(w.melee)knifeAttack(true);else P.ads=toggle?!P.ads:true;}
+document.addEventListener('keydown',e=>{if(e.code==='KeyX'&&!e.repeat&&inGame()&&!paused&&!buyOpen)altFire(true);});
+document.addEventListener('mouseup',e=>{if(e.button===0)mouse.l=false;if(e.button===2||(e.button===0&&mouse.rc)){mouse.r=false;mouse.rc=false;P.ads=false;}});
 document.addEventListener('contextmenu',e=>{if(inGame())e.preventDefault();});
 document.addEventListener('wheel',e=>{if(!inGame()||paused||buyOpen||!P.alive)return;const order=[P.inv[1],P.inv[2],'knife'].filter(Boolean);let i=order.indexOf(P.cur);i=(i+(e.deltaY>0?1:-1)+order.length)%order.length;switchWeapon(order[i]);},{passive:true});
 document.addEventListener('keydown',e=>{
