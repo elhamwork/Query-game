@@ -284,7 +284,7 @@ kbd{font:600 12px/1 var(--hud);color:var(--ink);background:rgba(236,228,210,.08)
 
 <div class="screen" id="menu">
   <div class="col">
-    <div class="eyebrow">Tactical 1v1 · Browser build · v10</div>
+    <div class="eyebrow">Tactical 1v1 · Browser build · v11</div>
     <h1 class="logo">Quarry<span>Duel</span></h1>
     <p class="lede">Buy rounds. Real recoil. One-tap headshots. Fight a bot that hears your footsteps or play a friend on this same page. First to <span id="ledeRounds">8</span> rounds wins.</p>
     <div class="spec"><span>Map <b id="mapName">Quarry</b></span><span>Size <b>56 × 76 m</b></span><span>Lanes <b id="mapLanes">Long · Mid · Yard</b></span></div><div class="spec" id="mapPick" style="margin-top:6px"></div><div class="spec" style="margin-top:6px"><span>Mode <b id="modeInfo"></b></span></div><div class="spec" id="modePick" style="margin-top:6px"></div>
@@ -1285,6 +1285,29 @@ function rigSides(find,names){
     fingers:n.fingers.map(f=>[1,2,3,4].map(i=>find(f(i))).filter(Boolean)),thumbs:[1,2,3,4].map(i=>find(n.th(i))).filter(Boolean)};
     h.idx=h.fingers[0][0];h.pinky=h.fingers[3][0];return h;};
 }
+
+/* procedural attachments: red-dot sight and weapon light, fitted to each gun's own rail height */
+const OPTICS={k7:{z:.105,light:[-.036,.03,-.2]},v9:{z:.03,light:null},l4:{z:.1,light:[-.034,-.005,-.3]}};
+function gunTopY(gun,z0,dz=.035){gun.updateMatrixWorld(true);let top=-1e9;const v=V3();gun.traverse(o=>{if(o.isMesh){const p=o.geometry.attributes.position;for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).applyMatrix4(o.matrixWorld);if(Math.abs(v.x)<.022&&Math.abs(v.z-z0)<dz&&v.y>top)top=v.y;}}});return top;}
+function addAttachments(gun,id){
+  const o=OPTICS[id];if(!o)return null;const inv=new THREE.Matrix4().copy(gun.matrixWorld).invert();
+  const y=gunTopY(gun,o.z);if(y<-1e8)return null;
+  const body=new THREE.MeshStandardMaterial({color:0x17181a,roughness:.42,metalness:.85,envMapIntensity:.9}),alu=new THREE.MeshStandardMaterial({color:0x2c2e31,roughness:.3,metalness:.9,envMapIntensity:1});
+  const g=new THREE.Group();g.position.set(0,y,o.z);
+  const bx=(w,h,d,m,x,yy,z,r=.004)=>{const mm=new THREE.Mesh(new RoundedBoxGeometry(w,h,d,2,r),m);mm.position.set(x,yy,z);mm.frustumCulled=false;g.add(mm);return mm;};
+  bx(.03,.01,.085,alu,0,.004,0);for(let i=-3;i<=3;i++)bx(.032,.004,.006,body,0,.011,i*.011,.001);
+  bx(.034,.014,.06,body,0,.018,0);
+  // hooded window frame
+  const fz=-.012;bx(.004,.034,.03,body,-.018,.042,fz);bx(.004,.034,.03,body,.018,.042,fz);bx(.04,.004,.032,body,0,.061,fz);bx(.04,.005,.034,body,0,.0245,fz);
+  bx(.012,.012,.02,alu,.024,.03,.012,.003);const knob=new THREE.Mesh(new THREE.CylinderGeometry(.006,.006,.008,10),alu);knob.rotation.z=Math.PI/2;knob.position.set(-.024,.03,.012);g.add(knob);
+  const lens=new THREE.Mesh(new THREE.PlaneGeometry(.032,.032),new THREE.MeshPhysicalMaterial({color:0x7fd0ff,roughness:.05,metalness:0,transparent:true,opacity:.07,envMapIntensity:.8,side:THREE.DoubleSide,depthWrite:false}));lens.position.set(0,.043,fz-.008);lens.frustumCulled=false;g.add(lens);
+  const dot=new THREE.Mesh(new THREE.CircleGeometry(.0014,12),new THREE.MeshBasicMaterial({color:0xff2318,transparent:true,opacity:.95,depthTest:false,toneMapped:false}));dot.position.set(0,.043,fz-.0085);dot.renderOrder=20;dot.frustumCulled=false;g.add(dot);
+  const halo=new THREE.Mesh(new THREE.CircleGeometry(.004,16),new THREE.MeshBasicMaterial({color:0xff2318,transparent:true,opacity:.16,depthTest:false,blending:THREE.AdditiveBlending,toneMapped:false}));halo.position.copy(dot.position);halo.renderOrder=19;halo.frustumCulled=false;g.add(halo);
+  gun.add(g);g.applyMatrix4(inv);
+  if(o.light){const l=new THREE.Group();l.position.set(...o.light);const tube=new THREE.Mesh(new THREE.CylinderGeometry(.011,.011,.07,14),body);tube.rotation.x=Math.PI/2;l.add(tube);const head=new THREE.Mesh(new THREE.CylinderGeometry(.0145,.012,.022,14),alu);head.rotation.x=Math.PI/2;head.position.z=-.044;l.add(head);
+    const ln=new THREE.Mesh(new THREE.CircleGeometry(.012,14),new THREE.MeshStandardMaterial({color:0xffffff,emissive:0xfff3d0,emissiveIntensity:2.2}));ln.rotation.y=Math.PI;ln.position.z=-.0555;l.add(ln);const mnt=new THREE.Mesh(new RoundedBoxGeometry(.014,.016,.03,2,.003),body);mnt.position.set(.012,0,0);l.add(mnt);l.traverse(m=>{m.frustumCulled=false;});gun.add(l);l.applyMatrix4(inv);}
+  return y+.043;
+}
 function buildViewmodelsReal(){
   const g=REAL.arms.scene;const root=new THREE.Group();root.add(g);g.scale.setScalar(.0102);g.rotation.y=Math.PI;
   const bones=[];g.traverse(o=>{if(o.isBone)bones.push(o);if(o.isMesh){o.frustumCulled=false;o.castShadow=false;if(o.material){o.material.envMapIntensity=.9;}}});
@@ -1293,10 +1316,10 @@ function buildViewmodelsReal(){
     fingers:['point','middle','ring','pink'].map(f=>i=>new RegExp('^'+s+'_'+f+i+'_')),th:i=>new RegExp('^'+s+'_thumb'+i+'_')}));
   ARMS={root,g,R:mk('R'),L:mk('L')};captureRest(ARMS);
   vmRoot.add(root);
-  for(const id in GUNSPEC){const sp=GUNSPEC[id];const gun=makeRealGun(id);gun.traverse(o=>{if(o.isMesh){o.castShadow=false;o.frustumCulled=false;if(o.material&&!o.material.__vm){o.material.envMapIntensity=.45;o.material.__vm=1;}}});
-    const r=new THREE.Group();r.add(gun);
+  for(const id in GUNSPEC){const sp=GUNSPEC[id];const gun=makeRealGun(id);gun.traverse(o=>{if(o.isMesh){o.castShadow=false;o.frustumCulled=false;if(o.material&&!o.material.__vm){o.material.envMapIntensity=.75;o.material.__vm=1;}}});
+    const r=new THREE.Group();r.add(gun);const sightY=addAttachments(gun,id);
     const info={g:gun,real:true,spec:sp,parts:gun.userData.parts||{},muzzle:V3(...sp.muzzle),eject:sp.eject?V3(...sp.eject):null,knife:id==='knife',two:!!sp.lh,pistol:id==='p9'||id==='h50',boltT:0,pumpT:0,slideT:0,slideLocked:false};
-    const T=V3(...sp.vm).sub(V3(...sp.rh.p).applyEuler(new THREE.Euler(...sp.vr)));VMPOS[id]=[T.x,T.y,T.z];VMROT[id]=sp.vr;ADSPOS[id]=[0,-(sp.muzzle[1]+(sp.sight||.03)),.05];
+    const T=V3(...sp.vm).sub(V3(...sp.rh.p).applyEuler(new THREE.Euler(...sp.vr)));VMPOS[id]=[T.x,T.y,T.z];VMROT[id]=sp.vr;ADSPOS[id]=[0,sightY!=null?-sightY:-(sp.muzzle[1]+(sp.sight||.03)),sightY!=null?.17:.05];
     r.visible=false;vmRoot.add(r);vmModels[id]={root:r,info};}
   vmScene.add(new THREE.HemisphereLight(0xf2ecdf,0x5c4a36,1.0));
   vmSun=new THREE.DirectionalLight(0xfff0d8,2.6);vmScene.add(vmSun);
