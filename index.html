@@ -284,7 +284,7 @@ kbd{font:600 12px/1 var(--hud);color:var(--ink);background:rgba(236,228,210,.08)
 
 <div class="screen" id="menu">
   <div class="col">
-    <div class="eyebrow">Tactical 1v1 · Browser build · v9</div>
+    <div class="eyebrow">Tactical 1v1 · Browser build · v10</div>
     <h1 class="logo">Quarry<span>Duel</span></h1>
     <p class="lede">Buy rounds. Real recoil. One-tap headshots. Fight a bot that hears your footsteps or play a friend on this same page. First to <span id="ledeRounds">8</span> rounds wins.</p>
     <div class="spec"><span>Map <b id="mapName">Quarry</b></span><span>Size <b>56 × 76 m</b></span><span>Lanes <b id="mapLanes">Long · Mid · Yard</b></span></div><div class="spec" id="mapPick" style="margin-top:6px"></div><div class="spec" style="margin-top:6px"><span>Mode <b id="modeInfo"></b></span></div><div class="spec" id="modePick" style="margin-top:6px"></div>
@@ -431,6 +431,7 @@ function mulberry(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1
 
 /* ================= settings ================= */
 const PRESETS={
+  chromebook:{rscale:.6,shadows:'off',ao:false,bloom:false,aa:'off',sharpen:.35,cine:.4,fpsGoal:30,dynres:true},
   low:{rscale:.75,shadows:'low',ao:false,bloom:false,aa:'fxaa',sharpen:.2},
   medium:{rscale:1,shadows:'medium',ao:false,bloom:true,aa:'fxaa',sharpen:.2},
   high:{rscale:1,shadows:'high',ao:true,bloom:true,aa:'smaa',sharpen:.25},
@@ -440,6 +441,8 @@ const DEFAULTS={v:2,diff:'recruit',gfx:'high',...PRESETS.high,fov:74,vmfov:62,br
   vol:.8,gunVol:1,stepVol:1,rounds:8,smoney:10000,rtime:95,radar:true,nick:''};
 const settings={...DEFAULTS};
 try{const saved=JSON.parse(localStorage.getItem('qd-settings')||'{}');Object.assign(settings,saved);if(saved.v!==2){Object.assign(settings,PRESETS[saved.gfx]||PRESETS.high);settings.v=2;}}catch(e){}
+const LOWEND=/CrOS/.test(navigator.userAgent)||((navigator.hardwareConcurrency||8)<=4&&(navigator.deviceMemory||8)<=4);
+try{if(!localStorage.getItem('qd-settings')&&LOWEND){settings.gfx='chromebook';Object.assign(settings,PRESETS.chromebook);}}catch(e){}
 function saveSettings(){try{localStorage.setItem('qd-settings',JSON.stringify(settings));}catch(e){}}
 
 /* ================= renderer ================= */
@@ -455,7 +458,7 @@ renderer.toneMapping=THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure=.92;
 renderer.shadowMap.enabled=true;
 renderer.shadowMap.type=THREE.PCFSoftShadowMap;
-const maxAniso=renderer.capabilities.getMaxAnisotropy();
+const maxAniso=LOWEND?2:renderer.capabilities.getMaxAnisotropy();
 
 const scene=new THREE.Scene();
 const camera=new THREE.PerspectiveCamera(74,1,.05,1400); camera.rotation.order='YXZ';
@@ -833,7 +836,7 @@ function stdMat(set,extra={}){const o={map:set.map,normalMap:set.normalMap,rough
 
 const lamps=[];
 /* ================= military base set dressing (procedural) ================= */
-const baseBlink=[];
+const baseBlink=[],baseLights=[];
 function buildBaseDecor(){
   const M=(c,r=.8,m=0,ex={})=>new THREE.MeshStandardMaterial(Object.assign({color:c,roughness:r,metalness:m},ex));
   const steel=M(0x4d5258,.55,.7),dark=M(0x1e2022,.6,.5),olive=M(0x4a5236,.85,.1),oliveD=M(0x363d28,.9,.1),woodM=M(0x6b5238,.9),rub=M(0x151515,.95),glass=M(0x9fc4d8,.1,.3,{transparent:true,opacity:.45});
@@ -851,13 +854,13 @@ function buildBaseDecor(){
   const roof=(x0,z0,x1,z1,mat,lip=true)=>{const w=(x1-x0+1)*S,d=(z1-z0+1)*S,cx=(x0+x1+1)*S/2,cz=(z0+z1+1)*S/2;
     add(uvs(new THREE.BoxGeometry(w+.5,.22,d+.5),w/4,d/4),mat,cx,5.72,cz);
     if(lip){box(w+.6,.3,.16,concM,cx,5.95,cz-d/2-.22);box(w+.6,.3,.16,concM,cx,5.95,cz+d/2+.22);box(.16,.3,d+.6,concM,cx-w/2-.22,5.95,cz);box(.16,.3,d+.6,concM,cx+w/2+.22,5.95,cz);}
-    const lm=box(.9,.06,.22,lampM,cx,5.56,cz);lm.castShadow=false;const pl=new THREE.PointLight(0xffe6b8,14,13,1.8);pl.position.set(cx,5.2,cz);scene.add(pl);return [cx,cz,w,d];};
+    const lm=box(.9,.06,.22,lampM,cx,5.56,cz);lm.castShadow=false;const pl=new THREE.PointLight(0xffe6b8,14,13,1.8);pl.position.set(cx,5.2,cz);scene.add(pl);baseLights.push(pl);return [cx,cz,w,d];};
   const hq=roof(10,15,17,22,concM);roof(3,8,7,12,roofM,false);roof(20,25,24,29,roofM,false);roof(2,27,8,31,roofM,false);
   // hangar: barrel vault
   {const x0=19,x1=25,z0=6,z1=10,w=(x1-x0+1)*S,d=(z1-z0+1)*S,cx=(x0+x1+1)*S/2,cz=(z0+z1+1)*S/2;
     const g=uvs(new THREE.CylinderGeometry(w/2+.2,w/2+.2,d+.4,24,1,true,-Math.PI/2,Math.PI),6,3);const m=add(g,roofM,cx,5.5,cz);m.rotation.x=Math.PI/2;m.scale.set(1,1,.42);
     for(const zz of[cz-d/2-.1,cz+d/2+.1]){const e=add(new THREE.CircleGeometry(w/2+.2,24,0,Math.PI),roofM,cx,5.5,zz);e.scale.y=.42;}
-    const pl=new THREE.PointLight(0xffe6b8,16,14,1.8);pl.position.set(cx,5,cz);scene.add(pl);box(1.2,.06,.25,lampM,cx,6.9,cz).castShadow=false;}
+    const pl=new THREE.PointLight(0xffe6b8,16,14,1.8);pl.position.set(cx,5,cz);scene.add(pl);baseLights.push(pl);box(1.2,.06,.25,lampM,cx,6.9,cz).castShadow=false;}
   // radio mast on the HQ roof
   {const [cx,cz]=hq;const g=new THREE.Group();g.position.set(cx+3,5.83,cz-3);scene.add(g);const Hm=13;
     for(const [a,b] of[[-.5,-.5],[.5,-.5],[.5,.5],[-.5,.5]]){const leg=cyl(.035,.05,Hm,steel,a*.9,Hm/2,b*.9,g,6);leg.rotation.set(-b*.055,0,a*.055);}
@@ -2362,7 +2365,7 @@ $('#diffSeg').addEventListener('click',e=>{const b=e.target.closest('button');if
 /* ---------- settings screen ---------- */
 const pct=v=>Math.round(v*100)+'%';
 const SETTINGS_UI={
-  video:[{k:'gfx',t:'chips',label:'Quality preset',hint:'Sets everything below',opts:[['low','Low'],['medium','Medium'],['high','High'],['ultra','Ultra'],['custom','Custom']]},
+  video:[{k:'gfx',t:'chips',label:'Quality preset',hint:'Sets everything below',opts:[['chromebook','Chromebook'],['low','Low'],['medium','Medium'],['high','High'],['ultra','Ultra'],['custom','Custom']]},
     {k:'dynres',t:'toggle',label:'Auto FPS protection',hint:'Lowers resolution when FPS drops'},
     {k:'fpsGoal',t:'chips',label:'FPS target',opts:[[30,'30'],[60,'60'],[120,'120'],[144,'144']]},
     {k:'rscale',t:'range',label:'Render scale',hint:'Above 100% supersamples',min:.5,max:2,step:.05,fmt:pct},
@@ -2403,6 +2406,7 @@ function applyCrosshair(){for(const el of document.querySelectorAll('.xh')){el.s
   const pv=document.querySelector('.xprev .xh');if(pv)pv.style.setProperty('--gap',settings.xgap+'px');}
 function applyAll(){applyCrosshair();$('#radarBox').hidden=!settings.radar;$('#fps').hidden=!settings.fps;$('#ledeRounds').textContent=settings.rounds;if(master)master.gain.value=settings.vol;
   renderer.toneMappingExposure=.92*settings.bright;if(gradePass){gradePass.uniforms.sharp.value=settings.sharpen;gradePass.uniforms.sat.value=settings.sat;gradePass.uniforms.cine.value=settings.cine;}
+  {const lite=settings.gfx==='chromebook'||settings.shadows==='off';for(const l of baseLights)l.visible=!lite;if(hemi)hemi.intensity=lite&&baseLights.length?.8:.45;}
   vmCam.fov=settings.vmfov;vmCam.updateProjectionMatrix();if(typeof mpRules==='function')mpRules();}
 function setSetting(k,v){
   if(k==='gfx'){if(v==='custom')return;settings.gfx=v;Object.assign(settings,PRESETS[v]);}
@@ -2493,10 +2497,10 @@ const GradeShader={uniforms:{tDiffuse:{value:null},res:{value:new THREE.Vector2(
 let gradePass=null;
 let dynScale=1,dynAcc=0,dynN=0,dynCool=0;
 function dynRes(dt){if(!settings.dynres||!inGame()||paused||document.hidden){dynAcc=0;dynN=0;return;}dynAcc+=dt;dynN++;if(dynAcc<1)return;const fps=dynN/dynAcc;dynAcc=0;dynN=0;if(dynCool>0){dynCool--;return;}
-  let ns=dynScale;if(fps<settings.fpsGoal*.82)ns=Math.max(.5,dynScale*(fps<settings.fpsGoal*.55?.78:.9));else if(fps>settings.fpsGoal*.97&&dynScale<1)ns=Math.min(1,dynScale*1.06);
+  let ns=dynScale;if(fps<settings.fpsGoal*.82)ns=Math.max(settings.gfx==='chromebook'?.6:.5,dynScale*(fps<settings.fpsGoal*.55?.78:.9));else if(fps>settings.fpsGoal*.97&&dynScale<1)ns=Math.min(1,dynScale*1.06);
   if(Math.abs(ns-dynScale)>.01){dynScale=ns;const base=Math.min(devicePixelRatio||1,1.5),pr=clamp(base*settings.rscale*dynScale,.4,2.5);renderer.setPixelRatio(pr);if(composer){composer.setPixelRatio(pr);composer.setSize(innerWidth,innerHeight);}dynCool=2;}}
 function buildComposer(){
-  const base=Math.min(devicePixelRatio||1,1.5),pr=clamp(base*settings.rscale*dynScale,.4,2.5);renderer.setPixelRatio(pr);
+  const base=Math.min(devicePixelRatio||1,settings.gfx==='chromebook'?1:1.5),pr=clamp(base*settings.rscale*dynScale,.35,2.5);renderer.setPixelRatio(pr);
   const w=innerWidth,h=innerHeight;renderer.setSize(w,h,false);
   if(composer){composer.dispose&&composer.dispose();}
   composer=new EffectComposer(renderer);composer.setPixelRatio(pr);composer.setSize(w,h);
