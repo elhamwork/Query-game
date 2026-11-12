@@ -285,7 +285,7 @@ kbd{font:600 12px/1 var(--hud);color:var(--ink);background:rgba(236,228,210,.08)
 
 <div class="screen" id="menu">
   <div class="col">
-    <div class="eyebrow">Tactical 1v1 · Browser build · v15</div>
+    <div class="eyebrow">Tactical 1v1 · Browser build · v17</div>
     <h1 class="logo">Quarry<span>Duel</span></h1>
     <p class="lede">Buy rounds. Real recoil. One-tap headshots. Fight a bot that hears your footsteps or play a friend on this same page. First to <span id="ledeRounds">8</span> rounds wins.</p>
     <div class="spec"><span>Map <b id="mapName">Quarry</b></span><span>Size <b>56 × 76 m</b></span><span>Lanes <b id="mapLanes">Long · Mid · Yard</b></span></div><div class="spec" id="mapPick" style="margin-top:6px"></div><div class="spec" style="margin-top:6px"><span>Mode <b id="modeInfo"></b></span></div><div class="spec" id="modePick" style="margin-top:6px"></div>
@@ -401,6 +401,7 @@ kbd{font:600 12px/1 var(--hud);color:var(--ink);background:rgba(236,228,210,.08)
   setTimeout(function(){ if(!window.__qdReady){ var e=document.getElementById('bootErr'); if(e){ e.hidden=false; e.textContent='The 3D engine did not load. Check your connection and reload the page.'; } var b=document.getElementById('playBtn'); if(b){ b.textContent='Unavailable'; } } }, 20000);
 </script>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js"></script>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
 </script>
@@ -1771,11 +1772,51 @@ function makePeerRoom(){
     async leave(){if(conn){try{conn.close();}catch(_){}conn=null;}otherId=null;otherPr={};if(peer){try{peer.destroy();}catch(_){}peer=null;}fire();}};
   return api;
 }
+
+/* Net room: direct WebRTC (PeerJS) when it connects, plus a WebSocket relay over public MQTT brokers so a join still works on networks that block direct connections */
+function makeNetRoom(){
+  const me='pc-'+Math.random().toString(36).slice(2,10);let mine={},otherId=null,otherPr={},otherAt=0,peer=null,conn=null,snap=Object.freeze([]);const hs=[],cs=[];
+  let code=null,role=null,pubT=null,subT=null,lastRelay=0,relayDirty=false;const brokers=[];
+  const popts=/peerlocal/.test(location.search)?{host:'127.0.0.1',port:9000,path:'/qd',secure:false,debug:0}:{debug:0};
+  const BROKERS=/mqttlocal/.test(location.search)?['ws://127.0.0.1:9001']:/nomqtt/.test(location.search)?[]:['wss://broker.emqx.io:8084/mqtt','wss://broker.hivemq.com:8884/mqtt','wss://mqtt.eclipseprojects.io:443/mqtt','wss://test.mosquitto.org:8081'];
+  const noPeer=/nopeer/.test(location.search)||typeof window.Peer!=='function';
+  const mk=(id,pr,isMe)=>Object.freeze({peer:id,by:null,isMe,sameTab:isMe,kind:'viewer',guest:false,presence:Object.freeze(pr),updatedAt:Date.now()});
+  const alive=()=>otherId&&performance.now()-otherAt<6000;
+  const fire=()=>{snap=Object.freeze([mk(me,mine,true),...(alive()?[mk(otherId,otherPr,false)]:[])]);const c={peers:snap,joined:[],left:[],updated:[]};for(const f of hs){try{f(c);}catch(e){console.error(e);}}};
+  const direct=()=>conn&&conn.open;
+  const onMsg=(d,via)=>{if(!d||d.t!=='p'||!d.p||typeof d.p!=='object'||d.id===me)return;const id=String(d.id).slice(0,40);if(otherId&&otherId!==id&&alive())return;
+    if(via==='relay'&&direct()&&performance.now()-(onMsg.dAt||0)<1500)return;if(via==='direct')onMsg.dAt=performance.now();
+    if(d.n!=null){if(otherId===id&&d.n<=(onMsg.n||0)&&d.n>(onMsg.n||0)-200)return;onMsg.n=d.n;}
+    otherId=id;otherPr=d.p;otherAt=performance.now();api.via=via;fire();};
+  let seq=0;
+  const relaySend=force=>{if(!pubT)return;const nowT=performance.now();const gap=direct()?1500:45;if(!force&&nowT-lastRelay<gap){relayDirty=true;return;}lastRelay=nowT;relayDirty=false;const msg=JSON.stringify({t:'p',id:me,n:++seq,p:mine});for(const b of brokers){if(b.connected){try{b.publish(pubT,msg,{qos:0});}catch(e){}}}};
+  const send=()=>{if(direct()){try{conn.send({t:'p',id:me,n:++seq,p:mine});}catch(e){}}relaySend(false);};
+  setInterval(()=>{if(relayDirty||(pubT&&performance.now()-lastRelay>900))relaySend(true);if(otherId&&!alive()){otherId=null;otherPr={};onMsg.n=0;fire();}},120);
+  const wire=c=>{conn=c;c.on('open',()=>{send();});c.on('data',d=>onMsg(d,'direct'));c.on('close',()=>{if(conn===c)conn=null;});c.on('error',()=>{});};
+  const makePeer=id=>new Promise((res,rej)=>{const pp=id?new Peer(id,popts):new Peer(popts);let done=false;pp.on('open',()=>{done=true;res(pp);});pp.on('error',e=>{if(!done){done=true;try{pp.destroy();}catch(_){}rej(e);}});setTimeout(()=>{if(!done){done=true;rej(new Error('peer timeout'));}},7000);});
+  const relayStart=()=>new Promise(res=>{if(!window.mqtt||!BROKERS.length){res(0);return;}let up=0,settled=false;const fin=()=>{if(!settled){settled=true;res(up);}};
+    for(const url of BROKERS){try{const c=window.mqtt.connect(url,{clientId:'qd'+me+Math.random().toString(36).slice(2,6),clean:true,connectTimeout:6000,reconnectPeriod:3000,keepalive:30});brokers.push(c);
+        c.on('connect',()=>{up++;if(subT)c.subscribe(subT,{qos:0});relaySend(true);fin();});c.on('message',(t,m)=>{if(t!==subT)return;try{onMsg(JSON.parse(m.toString()),'relay');}catch(e){}});c.on('error',()=>{});}catch(e){}}
+    setTimeout(fin,5000);});
+  const start=async(r,c)=>{await api.leave();role=r;code=c;const base='qd1/'+PEER_PREFIX+c+'/';pubT=base+(r==='host'?'h':'g');subT=base+(r==='host'?'g':'h');
+    const relayP=relayStart();let peerOk=false;
+    if(!noPeer){try{if(r==='host'){peer=await makePeer(PEER_PREFIX+c);peer.on('connection',cn=>{if(direct()){cn.on('open',()=>{try{cn.close();}catch(_){}});return;}wire(cn);});peer.on('disconnected',()=>{try{if(peer&&!peer.destroyed)peer.reconnect();}catch(_){}});peer.on('error',()=>{});}
+        else{peer=await makePeer(null);peer.on('error',()=>{});wire(peer.connect(PEER_PREFIX+c,{reliable:false,serialization:'json'}));}peerOk=true;}catch(e){peer=null;if(e&&e.type==='unavailable-id')throw e;}}
+    const up=await relayP;api.relayUp=up;api.peerUp=peerOk;if(!peerOk&&!up){const er=new Error('no transport');er.type='network';throw er;}send();};
+  const api={p2p:true,onError:null,via:null,relayUp:0,peerUp:false,
+    presence:async patch=>{const n={...mine};for(const k in patch){if(patch[k]===null)delete n[k];else n[k]=patch[k];}mine=n;fire();send();},
+    onPeers:h=>{hs.push(h);setTimeout(()=>h({peers:snap,joined:[],left:[],updated:[]}),0);return()=>{};},
+    onConnection:h=>{cs.push(h);setTimeout(()=>h(true),0);return()=>{};},
+    peers:()=>snap,connected:()=>true,
+    host:c=>start('host',c),join:c=>start('guest',c),
+    async leave(){if(conn){try{conn.close();}catch(_){}conn=null;}otherId=null;otherPr={};onMsg.n=0;pubT=subT=null;role=code=null;while(brokers.length){const b=brokers.pop();try{b.end(true);}catch(_){}}if(peer){try{peer.destroy();}catch(_){}peer=null;}fire();}};
+  return api;
+}
 async function initRoom(){
   let room=null;
   if(/fakeroom/.test(location.search))room=makeFakeRoom();
   else if(window.claude&&typeof window.claude.use==='function'){try{room=await window.claude.use('room');}catch(e){room=null;}}
-  else if(typeof window.Peer==='function')room=makePeerRoom();
+  else if(typeof window.Peer==='function'||window.mqtt)room=makeNetRoom();
   if(!room){mpStatus();return;}
   MP.room=room;
   room.onConnection(c=>{MP.connected=c;mpStatus();},()=>{MP.room=null;MP.connected=false;mpStatus();});
@@ -1835,7 +1876,7 @@ function inviteLink(){return location.origin+location.pathname+('?map='+MAPID+'&
 function mpJoin(code){code=String(code||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,4);if(!MP.room||MP.role||code.length!==4){if(code.length!==4)mpMsg('Enter the 4-letter code from your friend.');return;}
   initAudio();MP.role='guest';MP.joinCode=code;MP.opp=null;setPresence({nick:myNick(),join:code,host:null,opp:null,st:null,g:null});mpMsg('Joining. Waiting for the host.',false);renderMpList();mpStatus();
   if(MP.room.p2p){MP.room.onError=e=>{if(MP.role==='guest'&&!MP.on){mpMsg(peerErr(e));mpReset();}};MP.room.join(code).catch(e=>{if(MP.role==='guest'){mpMsg(peerErr(e));mpReset();}});}
-  setTimeout(()=>{if(MP.role==='guest'&&!MP.opp){mpMsg('No match with code '+code+' answered. Check the code and that your friend is hosting.');mpReset();}},12000);}
+  setTimeout(()=>{if(MP.role==='guest'&&!MP.opp){mpMsg('No match with code '+code+' answered. Check the code and that your friend still has the Host screen open.');mpReset();}},25000);}
 function mpReset(){MP.role=null;MP.code=null;MP.joinCode=null;MP.opp=null;MP.g=null;MP.snaps=[];MP.lastSt=null;setPresence({host:null,join:null,opp:null,st:null,g:null});if(MP.room&&MP.room.p2p)MP.room.leave();$('#mpWait').hidden=true;renderMpList();mpStatus();}
 function mpEnd(){MP.on=false;clearInterval(MP.sendTimer);MP.sendTimer=null;mpReset();$('#nameTag').hidden=true;}
 function oppLeft(){if(!MP.on)return;const nm=oppName();if(state!=='over'){banner(nm+' left','Match ended','neutral',3);MP.ended=true;matchOver(nm+' left the match');}}
@@ -2117,7 +2158,9 @@ function updatePlayer(dt){
   if(sprinting)maxS*=1.32;if(canADS())maxS*=.62;adsK=clamp(adsK+(canADS()?1:-1)*dt*7.5,0,1);sprintK=clamp(sprintK+(sprinting&&Math.hypot(P.v.x,P.v.z)>3?1:-1)*dt*5,0,1);if(P.crouch>.5)maxS*=.34;if(state==='freeze'||buyOpen)maxS=0;
   const fx=(keys.KeyW?1:0)-(keys.KeyS?1:0),sx=(keys.KeyD?1:0)-(keys.KeyA?1:0);const sy=Math.sin(P.yaw),cy=Math.cos(P.yaw);
   let wx=-sy*fx+cy*sx,wz=-cy*fx-sy*sx;const wl=Math.hypot(wx,wz);if(wl>0){wx/=wl;wz/=wl;}
-  const tx=wx*maxS,tz=wz*maxS;
+  let tx=wx*maxS,tz=wz*maxS;
+  {const cNow=!!keys.KeyC;if(cNow&&!P.cPrev&&P.onGround&&(P.sprint||sprintK>.5)&&Math.hypot(P.v.x,P.v.z)>4&&state!=='freeze'&&!buyOpen){P.slide=.8;const hv=Math.hypot(P.v.x,P.v.z);P.sdx=P.v.x/hv;P.sdz=P.v.z/hv;}P.cPrev=cNow;
+   if(P.slide>0){P.slide-=dt;if(!P.onGround||P.slide<=0)P.slide=0;else{const k=P.slide/.8;const sp=3+8.5*k*k;tx=P.sdx*sp;tz=P.sdz*sp;P.crouch=Math.max(P.crouch,.9);}}}
   if(P.onGround){const dvx=tx-P.v.x,dvz=tz-P.v.z,dl=Math.hypot(dvx,dvz),st=(wl>0?48:58)*dt;if(dl<=st){P.v.x=tx;P.v.z=tz;}else{P.v.x+=dvx/dl*st;P.v.z+=dvz/dl*st;}}
   else{P.v.x+=wx*8*dt;P.v.z+=wz*8*dt;const hs=Math.hypot(P.v.x,P.v.z),cap=Math.max(maxS,w.speed);if(hs>cap){P.v.x*=cap/hs;P.v.z*=cap/hs;}}
   if(keys.Space&&P.onGround&&state!=='freeze'&&!buyOpen&&!P.jumpLatch){P.v.y=7;P.onGround=false;P.jumpLatch=true;}
@@ -2443,7 +2486,7 @@ function updateBoard(){setT('bk1',String(P.kills));setT('bd1',String(P.deaths));
 
 /* ================= input ================= */
 function inGame(){return state==='freeze'||state==='live'||state==='post';}
-function requestLock(){if(lockFallback){return;}try{const r=canvas.requestPointerLock();if(r&&r.catch)r.catch(()=>{lockFallback=true;setPaused(false);});}catch(e){lockFallback=true;setPaused(false);}}
+function requestLock(){if(lockFallback){return;}try{let r;try{r=canvas.requestPointerLock({unadjustedMovement:true});}catch(_){r=canvas.requestPointerLock();}if(r&&r.catch)r.catch(()=>{lockFallback=true;setPaused(false);});}catch(e){lockFallback=true;setPaused(false);}}
 function setPaused(v){paused=v;$('#pause').hidden=!v;if(v)$('#pauseEyebrow').textContent=MP.on?'Menu · the match keeps running':'Paused';if(v){for(const k in keys)keys[k]=false;mouse.l=false;}}
 document.addEventListener('pointerlockchange',()=>{locked=document.pointerLockElement===canvas;if(locked){setPaused(false);}else if(inGame()&&!buyOpen&&state!=='over')setPaused(true);});
 document.addEventListener('pointerlockerror',()=>{lockFallback=true;setPaused(false);});
@@ -2658,7 +2701,7 @@ function frame(t){
     else if(state==='live'){roundT-=dt;if(roundT<=0){if(MODE==='survival'&&!MP.on)msWin('You outlasted them · '+MS.kills+' kills');else if(MISSION&&!MP.on)msFail('Out of time');else endRound(P.hp>bot.hp?'p':bot.hp>P.hp?'b':'draw','time');}}
     else if(state==='post'){phaseT-=dt;if(phaseT<=0){if(score.p>=target()||score.b>=((MODE==='gauntlet'&&!MP.on)?3:target()))matchOver();else if(MP.on)nextRoundMP(round+1);else nextRound();}}
     if(buyOpen&&!canBuy())closeBuy(true);
-    updatePlayer(dt);if(MP.on)updateRemote(dt);else eachBot(()=>updateBot(dt));updateMission(dt);
+    updatePlayer(dt);if(MP.on)updateRemote(dt);else if(!buyOpen)eachBot(()=>updateBot(dt));updateMission(dt);
     visCheckT-=dt;if(visCheckT<=0){visCheckT=.1;const was=pSeesB;pSeesB=false;if(P.alive&&bot.alive){const e=camera.position;pSeesB=los(e,targetPoint(bot,'head'))||los(e,targetPoint(bot,'chest'));}if(was&&!pSeesB)pSeesT=now;}
     stepFX(dt);refreshHUD(false);updateCrosshair();drawRadar();if(!$('#board').hidden)updateBoard();
   }else if(state==='menu'||state==='over'){bot.rig&&animBot(dt,0);if(FX.sparks)stepFX(dt);}
@@ -2700,7 +2743,7 @@ async function boot(){
       b.addEventListener('click',()=>{if(k===MAPID)return;try{localStorage.setItem('qd_map',k);}catch(e){}const u=new URL(location.href);u.searchParams.set('map',k);location.href=u.toString();});pk.appendChild(b);}})();
   initRoom().then(()=>{const m=/^#join-([A-Z0-9]{4})$/i.exec(location.hash);if(m&&MP.room&&!touchOnly){openFriends();$('#mpCode').value=m[1].toUpperCase();mpJoin(m[1]);}});
   requestAnimationFrame(frame);
-  window.__qd={MS,damage,BOTS,playerFire,setPausedDbg:setPaused,MP,settings,setSetting,mpHost,mpJoin,openFriends,openSettings,dbg:{gripHand,curlFingers,handFrame,restorePose,orientHand,twoBoneIK,wpos,solveVMArms,setPaused,animBotReal,animBotDeathReal,vmRecoil,updateVM},vmCam,vmScene,vmRoot,REAL,RTX,GUNSPEC,ARMS:()=>ARMS,P,bot,get state(){return state;},set state(v){state=v;},scene,camera,vmModels,WEAPONS,beginPlay,startMatch,grid,settings,setScopeDbg:setScope,vm,get now(){return now;}};
+  window.__qd={keys,MS,damage,BOTS,playerFire,setPausedDbg:setPaused,MP,settings,setSetting,mpHost,mpJoin,openFriends,openSettings,dbg:{gripHand,curlFingers,handFrame,restorePose,orientHand,twoBoneIK,wpos,solveVMArms,setPaused,animBotReal,animBotDeathReal,vmRecoil,updateVM},vmCam,vmScene,vmRoot,REAL,RTX,GUNSPEC,ARMS:()=>ARMS,P,bot,get state(){return state;},set state(v){state=v;},scene,camera,vmModels,WEAPONS,beginPlay,startMatch,grid,settings,setScopeDbg:setScope,vm,get now(){return now;}};
 }
 boot().catch(err=>{console.error(err);const e=$('#bootErr');e.hidden=false;e.textContent='Could not start the game: '+(err&&err.message?err.message:err);});
 </script>
