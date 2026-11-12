@@ -285,7 +285,7 @@ kbd{font:600 12px/1 var(--hud);color:var(--ink);background:rgba(236,228,210,.08)
 
 <div class="screen" id="menu">
   <div class="col">
-    <div class="eyebrow">Tactical 1v1 · Browser build · v14</div>
+    <div class="eyebrow">Tactical 1v1 · Browser build · v15</div>
     <h1 class="logo">Quarry<span>Duel</span></h1>
     <p class="lede">Buy rounds. Real recoil. One-tap headshots. Fight a bot that hears your footsteps or play a friend on this same page. First to <span id="ledeRounds">8</span> rounds wins.</p>
     <div class="spec"><span>Map <b id="mapName">Quarry</b></span><span>Size <b>56 × 76 m</b></span><span>Lanes <b id="mapLanes">Long · Mid · Yard</b></span></div><div class="spec" id="mapPick" style="margin-top:6px"></div><div class="spec" style="margin-top:6px"><span>Mode <b id="modeInfo"></b></span></div><div class="spec" id="modePick" style="margin-top:6px"></div>
@@ -382,7 +382,7 @@ kbd{font:600 12px/1 var(--hud);color:var(--ink);background:rgba(236,228,210,.08)
       <section class="mp-card"><h3>Join</h3><div id="mpList" class="mp-list"><p class="dim">No open matches yet.</p></div>
         <div class="mp-code"><input id="mpCode" class="txt" maxlength="4" placeholder="CODE" autocomplete="off" aria-label="Match code"><button class="ghost" id="mpJoin" type="button">Join</button></div></section>
     </div>
-    <div class="mp-wait" id="mpWait" hidden><span>Waiting for your friend. Code</span><b id="mpCodeShow">----</b><button class="ghost" id="mpInvite" type="button" hidden>Copy invite link</button><button class="ghost" id="mpCancel" type="button">Cancel</button></div>
+    <div class="mp-wait" id="mpWait" hidden><span>Waiting for your friend. Press Start game to play a bot until they join. Code</span><b id="mpCodeShow">----</b><button class="ghost" id="mpInvite" type="button" hidden>Copy invite link</button><button class="play" id="mpStartNow" type="button" style="min-width:0;padding:10px 18px;font-size:17px">Start game</button><button class="ghost" id="mpCancel" type="button">Cancel</button></div>
     <p class="err" id="mpMsg" hidden></p>
     <p class="note">Share this page with your friend from the Share menu. You both need to be signed in to Claude with this page open. One of you hosts and the other joins.</p>
     <button class="ghost" id="mpBack" type="button" style="justify-self:start">Back</button>
@@ -1842,6 +1842,7 @@ function oppLeft(){if(!MP.on)return;const nm=oppName();if(state!=='over'){banner
 function startMatchMP(){
   if(MP.on)return;const host=MP.role==='host';if(!host&&!(MP.g&&MP.g.rd>=1))return;
   MP.on=true;MP.ended=false;
+  for(const b of BOTS){if(b!==BOTS[0]){b.off=true;b.alive=false;if(b.rig)b.rig.root.visible=false;}}bot=BOTS[0];bot.chaser=false;bot.surrender=false;if(bot.rig)bot.rig.root.visible=true;$('#objective').hidden=true;if(MS.beacon)MS.beacon.visible=false;$('#vig').style.opacity='';
   if(host){MP.rw=settings.rounds;MP.sm=settings.smoney;MP.rt=settings.rtime;}else{MP.rw=MP.g.rw||8;MP.sm=MP.g.sm||10000;MP.rt=MP.g.rt||95;}
   const op=MP.peers.find(p=>p.peer===MP.opp),ost=op&&op.presence&&op.presence.st;
   MP.seenHit=ost&&Array.isArray(ost.hits)&&ost.hits.length?Math.max(...ost.hits.map(h=>h[0])):0;MP.oppShotN=ost?ost.fs||0:0;MP.snaps=[];MP.lastSt=null;MP.myHits=[];MP.kb=null;
@@ -2576,6 +2577,7 @@ $('#nick').addEventListener('input',e=>{settings.nick=cleanNick(e.target.value);
 $('#pauseSettings').addEventListener('click',()=>openSettings('pause'));
 function beginPlay(){initAudio();decodeSfx();$('#menu').hidden=true;$('#over').hidden=true;$('#hud').hidden=false;startMatch();requestLock();canvas.focus();}
 $('#playBtn').addEventListener('click',beginPlay);
+$('#mpStartNow').addEventListener('click',()=>{if(MP.role!=='host'||MP.on)return;$('#mpScreen').hidden=true;beginPlay();setTimeout(()=>{if(!MP.on)banner('Warm-up vs bot','Your friend drops in the moment they join · code '+(MP.code||''),'neutral',4);},4600);});
 $('#againBtn').addEventListener('click',()=>{if(MP.on||MP.role){mpEnd();state='menu';openFriends();}else beginPlay();});
 $('#menuBtn').addEventListener('click',()=>{mpEnd();$('#over').hidden=true;$('#menu').hidden=false;state='menu';});
 $('#resumeBtn').addEventListener('click',()=>{if(lockFallback)setPaused(false);else requestLock();});
