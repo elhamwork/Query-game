@@ -285,7 +285,7 @@ kbd{font:600 12px/1 var(--hud);color:var(--ink);background:rgba(236,228,210,.08)
 
 <div class="screen" id="menu">
   <div class="col">
-    <div class="eyebrow">Tactical 1v1 · Browser build · v18</div>
+    <div class="eyebrow">Tactical 1v1 · Browser build · v19</div>
     <h1 class="logo">Quarry<span>Duel</span></h1>
     <p class="lede">Buy rounds. Real recoil. One-tap headshots. Fight a bot that hears your footsteps or play a friend on this same page. First to <span id="ledeRounds">8</span> rounds wins.</p>
     <div class="spec"><span>Map <b id="mapName">Quarry</b></span><span>Size <b>56 × 76 m</b></span><span>Lanes <b id="mapLanes">Long · Mid · Yard</b></span></div><div class="spec" id="mapPick" style="margin-top:6px"></div><div class="spec" style="margin-top:6px"><span>Mode <b id="modeInfo"></b></span></div><div class="spec" id="modePick" style="margin-top:6px"></div>
@@ -1584,7 +1584,22 @@ function impactFX(p,r){
   if(p.distanceToSquared(camera.position)<1600){const metal=c==='C'||c==='K'||c==='r';sfx(metal?'imp_hard':Math.random()<.12?pick(['ric1','ric2','ric3']):'imp_stone',p,metal?.55:.45);}
 }
 function bloodFX(p,d){add(FX.debris,p,10,[.35,.02,.02],1.8,.6,8,.5,1,d.clone().multiplyScalar(.6));puff(p,[.45,.04,.04],.2,.35,.05,2,.6);}
-function stepFX(dt){
+
+/* brass casings + sun glare */
+const CAS={list:[],i:0,geo:null,mat:null};
+function initCasings(){if(CAS.geo)return;CAS.geo=new THREE.CylinderGeometry(.008,.008,.04,6);CAS.geo.rotateZ(Math.PI/2);CAS.mat=new THREE.MeshStandardMaterial({color:0xc9a24a,metalness:.9,roughness:.35});
+  const n=settings.gfx==='chromebook'?10:28;for(let i=0;i<n;i++){const m=new THREE.Mesh(CAS.geo,CAS.mat);m.visible=false;scene.add(m);CAS.list.push({m,v:V3(),t:0,spin:V3(),down:false});}}
+function ejectShell(){initCasings();const c=CAS.list[CAS.i++%CAS.list.length];const r=V3(Math.cos(P.yaw),0,-Math.sin(P.yaw));const f=V3(-Math.sin(P.yaw),0,-Math.cos(P.yaw));
+  c.m.position.set(P.p.x,P.p.y+P.eye-.18,P.p.z).addScaledVector(r,.22).addScaledVector(f,.35);c.v.copy(r).multiplyScalar(2+Math.random()*1.4).addScaledVector(f,.3+Math.random()*.6);c.v.y=1.6+Math.random()*1.2;c.t=2.2;c.down=false;c.spin.set(rand(-20,20),rand(-20,20),rand(-20,20));c.m.visible=true;}
+function stepCasings(dt){for(const c of CAS.list){if(!c.m.visible)continue;c.t-=dt;if(c.t<=0){c.m.visible=false;continue;}if(!c.down){c.v.y-=GRAV*dt;c.m.position.addScaledVector(c.v,dt);c.m.rotation.x+=c.spin.x*dt;c.m.rotation.y+=c.spin.y*dt;c.m.rotation.z+=c.spin.z*dt;
+      const gy=groundAt(c.m.position,.01);if(c.m.position.y<=gy+.01){c.m.position.y=gy+.01;if(c.v.y<-1.2){c.v.y*=-.35;c.v.x*=.5;c.v.z*=.5;if(camera.position.distanceToSquared(c.m.position)<150)sfx(pick(['casing1','casing2']),c.m.position,.18);}else{c.down=true;}}}}}
+let sunGlare=null;
+function buildSunGlare(){if(MAPLOOK.dark||settings.gfx==='chromebook'||sunGlare)return;const cv=document.createElement('canvas');cv.width=cv.height=128;const g=cv.getContext('2d');const gr=g.createRadialGradient(64,64,0,64,64,64);gr.addColorStop(0,'rgba(255,245,220,1)');gr.addColorStop(.12,'rgba(255,225,170,.55)');gr.addColorStop(.4,'rgba(255,200,130,.12)');gr.addColorStop(1,'rgba(255,190,120,0)');g.fillStyle=gr;g.fillRect(0,0,128,128);
+  sunGlare=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),transparent:true,blending:THREE.AdditiveBlending,depthTest:false,depthWrite:false,opacity:0,fog:false,toneMapped:false}));sunGlare.renderOrder=998;sunGlare.frustumCulled=false;scene.add(sunGlare);}
+function updateSunGlare(){if(!sunGlare)return;const dirToSun=sunDir.clone();const cd=V3();camera.getWorldDirection(cd);const dot=cd.dot(dirToSun);const vis=dot>.25&&!paused?clamp((dot-.25)/.5,0,1):0;
+  sunGlare.position.copy(camera.position).addScaledVector(dirToSun,80);sunGlare.scale.setScalar(70+vis*120);
+  let k=vis;if(vis>.05&&!los(camera.position,camera.position.clone().addScaledVector(dirToSun,60)))k=0;sunGlare.material.opacity+=(k*.85-sunGlare.material.opacity)*.15;}
+function stepFX(dt){stepCasings(dt);
   stepSys(FX.sparks,dt,true);stepSys(FX.debris,dt,false);
   for(const f of FX.puffs){if(!f.s.visible)continue;f.t+=dt;const k=f.t/f.life;if(k>=1){f.s.visible=false;continue;}f.s.scale.setScalar(f.base*(1+k*f.grow));f.s.position.y+=f.vy*dt;f.s.material.opacity=f.op*(1-k)*(1-k);}
   for(const t of FX.tracers){if(!t.m.visible)continue;t.t+=dt;if(t.t>.07)t.m.visible=false;else t.m.material.opacity=.75*(1-t.t/.07);}
@@ -2134,7 +2149,7 @@ function playerFire(){
   if(w.id==='l4')setTimeout(()=>{if(P.cur==='l4')sfx('shotgun_pump',null,.7);},380);
   if(w.id==='lb')setTimeout(()=>{if(P.cur==='lb'){sfx('sniper_boltback',null,.7);setTimeout(()=>sfx('sniper_boltfwd',null,.7),380);}},250);
   if(w.id!=='h50'&&w.id!=='l4')setTimeout(()=>sfx(pick(['casing1','casing2']),null,.25),420);
-  sShot(P.cur,null);muzzleVM();
+  sShot(P.cur,null);muzzleVM();if(!w.melee&&w.id!=='l4'&&w.id!=='lb')ejectShell();
   FX.light.position.copy(from);FX.lightT=.05;
   botAlert(P.p,1);
   if(w.scope){setScope(0);if(vmModels.lb)vmModels.lb.info.boltT=1;}
@@ -2792,7 +2807,7 @@ function frame(t){
     if(buyOpen&&!canBuy())closeBuy(true);
     updatePlayer(dt);if(MP.on)updateRemote(dt);else if(!buyOpen){if(TEAM&&!P.alive&&state==='live'){P.respawnT-=dt;if(P.respawnT<=0)teamRespawn(P);}eachBot(()=>TEAM?updateTeamBot(dt):updateBot(dt));}updateMission(dt);
     visCheckT-=dt;if(visCheckT<=0){visCheckT=.1;const was=pSeesB;pSeesB=false;if(P.alive&&bot.alive){const e=camera.position;pSeesB=los(e,targetPoint(bot,'head'))||los(e,targetPoint(bot,'chest'));}if(was&&!pSeesB)pSeesT=now;}
-    stepFX(dt);refreshHUD(false);updateCrosshair();drawRadar();if(!$('#board').hidden)updateBoard();
+    stepFX(dt);updateSunGlare();refreshHUD(false);updateCrosshair();drawRadar();if(!$('#board').hidden)updateBoard();
   }else if(state==='menu'||state==='over'){bot.rig&&animBot(dt,0);if(FX.sparks)stepFX(dt);}
   updateCamera(dt);updateVM(dt);updateListener();
   updateDust(dt);dynRes(dt);updateHouse(dt);if(baseBlink.length){const on=(performance.now()%1600)<500;for(const m of baseBlink)m.visible=on;}
@@ -2819,7 +2834,7 @@ async function boot(){
   bot.rig=rig||buildBotRig();bot.p.copy(SPAWN_B);bot.cur='k7';bot.aimYaw=Math.PI;bot.helmet=true;animBot(0,0);
   const nx=MODE==='team'?(settings.gfx==='chromebook'?4:8):(MAPS[MAPID].bots||(MODE==='survival'?3:0));if(rig&&nx){const n=MODE==='team'?nx:settings.gfx==='chromebook'?Math.min(2,nx):nx;for(let i=0;i<n;i++){try{const e=makeEnt('raid');Object.assign(e,BOTINIT());e.rig=buildBotRigReal(SkeletonUtils.clone(REAL.soldier.scene));e.p.copy(SPAWN_B);e.cur='knife';e.alive=false;e.off=true;e.rig.root.visible=false;BOTS.push(e);}catch(err){console.error('extra bot failed',err);}}}
   if(MAPLOOK.dark)eachBot(b=>addEyes(b));
-  buildRadar();
+  buildRadar();buildSunGlare();
   pb.textContent='Building map 100%';await nextFrame();
   // warm up shaders
   renderer.compile(scene,camera);renderer.compile(vmScene,vmCam);
