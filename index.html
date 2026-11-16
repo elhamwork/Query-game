@@ -285,7 +285,7 @@ kbd{font:600 12px/1 var(--hud);color:var(--ink);background:rgba(236,228,210,.08)
 
 <div class="screen" id="menu">
   <div class="col">
-    <div class="eyebrow">Tactical 1v1 · Browser build · v19</div>
+    <div class="eyebrow">Tactical 1v1 · Browser build · v20</div>
     <h1 class="logo">Quarry<span>Duel</span></h1>
     <p class="lede">Buy rounds. Real recoil. One-tap headshots. Fight a bot that hears your footsteps or play a friend on this same page. First to <span id="ledeRounds">8</span> rounds wins.</p>
     <div class="spec"><span>Map <b id="mapName">Quarry</b></span><span>Size <b>56 × 76 m</b></span><span>Lanes <b id="mapLanes">Long · Mid · Yard</b></span></div><div class="spec" id="mapPick" style="margin-top:6px"></div><div class="spec" style="margin-top:6px"><span>Mode <b id="modeInfo"></b></span></div><div class="spec" id="modePick" style="margin-top:6px"></div>
@@ -378,7 +378,7 @@ kbd{font:600 12px/1 var(--hud);color:var(--ink);background:rgba(236,228,210,.08)
     <p class="mp-status" id="mpStatus">Connecting</p>
     <div class="field"><label for="nick">Your name</label><input id="nick" class="txt" maxlength="16" autocomplete="off" placeholder="Player"></div>
     <div class="mp-grid">
-      <section class="mp-card"><h3>Host</h3><p>Your friend joins with your rules: <span id="mpRules"></span>. Change them in Settings, Game.</p><button class="play" id="mpHost" type="button">Host match</button></section>
+      <section class="mp-card"><h3>Host</h3><p>Your friend joins with your rules: <span id="mpRules"></span>. Change them in Settings, Game.</p><button class="play" id="mpHost" type="button">Host match</button> <button class="ghost" id="mpQuick" type="button" title="Find another player on this map and mode">Quick match</button></section>
       <section class="mp-card"><h3>Join</h3><div id="mpList" class="mp-list"><p class="dim">No open matches yet.</p></div>
         <div class="mp-code"><input id="mpCode" class="txt" maxlength="4" placeholder="CODE" autocomplete="off" aria-label="Match code"><button class="ghost" id="mpJoin" type="button">Join</button></div></section>
     </div>
@@ -1794,7 +1794,7 @@ function makePeerRoom(){
 function makeNetRoom(){
   const me='pc-'+Math.random().toString(36).slice(2,10);let mine={},otherId=null,otherPr={},otherAt=0,peer=null,conn=null,snap=Object.freeze([]);const hs=[],cs=[];
   let code=null,role=null,pubT=null,subT=null,lastRelay=0,relayDirty=false;const brokers=[];
-  const popts=/peerlocal/.test(location.search)?{host:'127.0.0.1',port:9000,path:'/qd',secure:false,debug:0}:{debug:0};
+  const popts=/peerlocal/.test(location.search)?{host:'127.0.0.1',port:9000,path:'/qd',secure:false,debug:0}:{debug:0,config:{iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'},{urls:'stun:stun.cloudflare.com:3478'},{urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turn:openrelay.metered.ca:443?transport=tcp'],username:'openrelayproject',credential:'openrelayproject'}],iceCandidatePoolSize:4}};
   const BROKERS=/mqttlocal/.test(location.search)?['ws://127.0.0.1:9001']:/nomqtt/.test(location.search)?[]:['wss://broker.emqx.io:8084/mqtt','wss://broker.hivemq.com:8884/mqtt','wss://mqtt.eclipseprojects.io:443/mqtt','wss://test.mosquitto.org:8081'];
   const noPeer=/nopeer/.test(location.search)||typeof window.Peer!=='function';
   const mk=(id,pr,isMe)=>Object.freeze({peer:id,by:null,isMe,sameTab:isMe,kind:'viewer',guest:false,presence:Object.freeze(pr),updatedAt:Date.now()});
@@ -1864,8 +1864,8 @@ function onPeersChange(ch){
 }
 function mpStatus(){
   const el=$('#mpStatus');if(!el)return;el.className='mp-status';
-  if(!MP.room){el.classList.add('bad');el.textContent='Friend play is not available here. Open this page in Claude while signed in.';$('#mpHost').disabled=true;$('#mpJoin').disabled=true;return;}
-  $('#mpHost').disabled=!!MP.role;$('#mpJoin').disabled=!!MP.role;
+  if(!MP.room){el.classList.add('bad');el.textContent='Friend play is not available here. Open this page in Claude while signed in.';$('#mpHost').disabled=true;$('#mpJoin').disabled=true;$('#mpQuick').disabled=true;return;}
+  $('#mpHost').disabled=!!MP.role;$('#mpJoin').disabled=!!MP.role;$('#mpQuick').disabled=!!MP.role||!!QM||!MP.room.p2p;
   if(!MP.connected){el.textContent='Connecting';return;}
   el.classList.add('ok');if(MP.room.p2p){el.textContent=MP.opp?'Connected to '+oppName():MP.role==='guest'?'Connecting to your friend':'Ready · host a match and send your friend the invite link';return;}
   const n=MP.peers.length;el.textContent='Online · '+n+(n===1?' person':' people')+' on this page';
@@ -2715,6 +2715,25 @@ function openFriends(){for(const id of['menu','over'])$('#'+id).hidden=true;$('#
 $('#friendBtn').addEventListener('click',openFriends);
 $('#mpBack').addEventListener('click',()=>{if(MP.role&&!MP.on)mpReset();$('#mpScreen').hidden=true;$('#menu').hidden=false;});
 $('#mpHost').addEventListener('click',mpHost);
+let QM=null;
+function qmStop(){if(!QM)return;clearInterval(QM.iv);for(const c of QM.cs){try{c.end(true);}catch(e){}}QM=null;$('#mpQuick').disabled=false;}
+function mpQuick(){
+  if(!MP.room||!MP.room.p2p||MP.role||QM)return;if(!window.mqtt){mpMsg('Quick match needs the internet relay. Use a host code instead.');return;}
+  initAudio();const topic='qd1/'+PEER_PREFIX+'lobby/'+MAPID+'/'+MODE,myId=Math.random().toString(36).slice(2,10);
+  const urls=/mqttlocal/.test(location.search)?['ws://127.0.0.1:9001']:['wss://broker.emqx.io:8084/mqtt','wss://broker.hivemq.com:8884/mqtt','wss://mqtt.eclipseprojects.io:443/mqtt'];
+  const q=QM={cs:[],t0:performance.now(),phase:'search',iv:0};$('#mpQuick').disabled=true;mpMsg('Searching for a player on this map and mode.',false);
+  const pub=m=>{const j=JSON.stringify(m);for(const c of q.cs)if(c.connected){try{c.publish(topic,j,{qos:0});}catch(e){}}};
+  for(const u of urls){try{const c=window.mqtt.connect(u,{clientId:'qdq'+myId+Math.random().toString(36).slice(2,5),clean:true,connectTimeout:6000,reconnectPeriod:3000});q.cs.push(c);
+    c.on('connect',()=>c.subscribe(topic,{qos:0}));c.on('error',()=>{});
+    c.on('message',(t,m)=>{if(QM!==q)return;let d;try{d=JSON.parse(m.toString());}catch(e){return;}if(!d||d.id===myId||d.t!=='open'||!/^[A-Z0-9]{4}$/.test(d.code||''))return;
+      if(q.phase==='search'){q.phase='join';const code=d.code;qmStop();$('#mpCode').value=code;mpJoin(code);}
+      else if(q.phase==='host'&&!MP.opp&&d.id<myId){q.phase='join';const code=d.code;qmStop();mpReset();setTimeout(()=>{$('#mpCode').value=code;mpJoin(code);},300);}});}catch(e){}}
+  q.iv=setInterval(()=>{if(QM!==q)return;const el=(performance.now()-q.t0)/1000;
+    if(q.phase==='search'){if(!q.cs.some(c=>c.connected)){if(el>9){qmStop();mpMsg('Could not reach the matchmaking relay. Try a host code instead.');}return;}
+      if(el>3){q.phase='host';mpMsg('No one waiting. You are hosting. First player to search joins you.',false);mpHost();}}
+    else if(q.phase==='host'){if(MP.opp||!MP.role){qmStop();return;}if(MP.code)pub({t:'open',id:myId,code:MP.code});if(el>120){qmStop();mpReset();mpMsg('Nobody else searched yet. Try again or share a code.');}}},1000);
+}
+$('#mpQuick').addEventListener('click',mpQuick);
 $('#mpCancel').addEventListener('click',mpReset);
 $('#mpInvite').addEventListener('click',()=>{const l=inviteLink(),b=$('#mpInvite');const ok=()=>{b.textContent='Link copied';setTimeout(()=>{b.textContent='Copy invite link';},1800);};
   try{navigator.clipboard.writeText(l).then(ok,()=>{mpMsg('Send your friend this link: '+l,false);});}catch(e){mpMsg('Send your friend this link: '+l,false);}});
