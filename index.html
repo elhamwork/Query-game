@@ -306,7 +306,7 @@ kbd{font:600 12px/1 var(--hud);color:var(--ink);background:rgba(236,228,210,.08)
 
 <div class="screen" id="menu">
   <div class="col">
-    <div class="eyebrow">Tactical 1v1 · Browser build · v22</div>
+    <div class="eyebrow">Tactical 1v1 · Browser build · v23</div>
     <h1 class="logo">Quarry<span>Duel</span></h1>
     <p class="lede">Buy rounds. Real recoil. One-tap headshots. Fight a bot that hears your footsteps or play a friend on this same page. First to <span id="ledeRounds">8</span> rounds wins.</p>
     <div class="spec"><span>Map <b id="mapName">Quarry</b></span><span>Size <b>56 × 76 m</b></span><span>Lanes <b id="mapLanes">Long · Mid · Yard</b></span></div><div class="spec" id="mapPick" style="margin-top:6px"></div><div class="spec" style="margin-top:6px"><span>Mode <b id="modeInfo"></b></span></div><div class="spec" id="modePick" style="margin-top:6px"></div>
@@ -1840,12 +1840,12 @@ function makeNetRoom(){
   const relayStart=()=>new Promise(res=>{if(!window.mqtt||!BROKERS.length){res(0);return;}let up=0,settled=false;const fin=()=>{if(!settled){settled=true;res(up);}};
     for(const url of BROKERS){try{const c=window.mqtt.connect(url,{clientId:'qd'+me+Math.random().toString(36).slice(2,6),clean:true,connectTimeout:6000,reconnectPeriod:3000,keepalive:30});brokers.push(c);
         c.on('connect',()=>{up++;if(subT)c.subscribe(subT,{qos:0});relaySend(true);fin();});c.on('message',(t,m)=>{if(t!==subT)return;try{onMsg(JSON.parse(m.toString()),'relay');}catch(e){}});c.on('error',()=>{});}catch(e){}}
-    setTimeout(fin,5000);});
+    setTimeout(fin,12000);});
   const start=async(r,c)=>{await api.leave();role=r;code=c;const base='qd1/'+PEER_PREFIX+c+'/';pubT=base+(r==='host'?'h':'g');subT=base+(r==='host'?'g':'h');
     const relayP=relayStart();let peerOk=false;
     if(!noPeer){try{if(r==='host'){peer=await makePeer(PEER_PREFIX+c);peer.on('connection',cn=>{if(direct()){cn.on('open',()=>{try{cn.close();}catch(_){}});return;}wire(cn);});peer.on('disconnected',()=>{try{if(peer&&!peer.destroyed)peer.reconnect();}catch(_){}});peer.on('error',()=>{});}
         else{peer=await makePeer(null);peer.on('error',()=>{});wire(peer.connect(PEER_PREFIX+c,{reliable:false,serialization:'json'}));}peerOk=true;}catch(e){peer=null;if(e&&e.type==='unavailable-id')throw e;}}
-    const up=await relayP;api.relayUp=up;api.peerUp=peerOk;if(!peerOk&&!up){const er=new Error('no transport');er.type='network';throw er;}send();};
+    const up=await relayP;api.relayUp=up;api.peerUp=peerOk;if(!peerOk&&!up&&!(window.mqtt&&BROKERS.length)){const er=new Error('no transport');er.type='network';throw er;}send();};
   const api={p2p:true,onError:null,via:null,relayUp:0,peerUp:false,
     presence:async patch=>{const n={...mine};for(const k in patch){if(patch[k]===null)delete n[k];else n[k]=patch[k];}mine=n;fire();send();},
     onPeers:h=>{hs.push(h);setTimeout(()=>h({peers:snap,joined:[],left:[],updated:[]}),0);return()=>{};},
@@ -1879,10 +1879,11 @@ function onPeersChange(ch){
       if(MP.role==='guest'&&pr.g&&pr.g!==MP.g){MP.g=pr.g;onHostG(pr.g);}
     }
   }else if(MP.role==='host'&&MP.code){
-    const j=ch.peers.filter(p=>!p.isMe&&p.presence&&p.presence.join===MP.code).sort((a,b)=>a.peer<b.peer?-1:1)[0];
+    const j=ch.peers.filter(p=>!p.isMe&&p.presence&&p.presence.join===MP.code&&p.presence.map===MAPID&&p.presence.mode===MODE).sort((a,b)=>a.peer<b.peer?-1:1)[0];
     if(j){MP.opp=j.peer;MP.oppNick=cleanNick(j.presence.nick)||'Friend';setPresence({opp:j.peer});startMatchMP();}
   }else if(MP.role==='guest'&&MP.joinCode){
     const h=ch.peers.find(p=>!p.isMe&&p.presence&&p.presence.host===MP.joinCode);
+    if(h&&h.presence.map&&h.presence.mode&&MAPS[h.presence.map]&&MODES[h.presence.mode]&&(h.presence.map!==MAPID||h.presence.mode!==MODE)){mpMsg('Switching to your friend\'s map.',false);try{localStorage.setItem('qd_map',h.presence.map);localStorage.setItem('qd_mode',h.presence.mode);}catch(e){}const u=new URL(location.href);u.searchParams.set('map',h.presence.map);u.searchParams.set('mode',h.presence.mode);u.hash='join-'+MP.joinCode;location.href=u.toString();return;}
     if(h&&MP.me&&h.presence.opp===MP.me){MP.opp=h.peer;MP.oppNick=cleanNick(h.presence.nick)||'Friend';if(h.presence.g){MP.g=h.presence.g;onHostG(MP.g);}else mpMsg('Joined '+MP.oppNick+'. Starting.',false);}
     else if(h&&h.presence.opp&&h.presence.opp!==MP.me)mpMsg('That match already has two players.');
   }
@@ -1911,7 +1912,7 @@ async function mpHost(){if(!MP.room||MP.role)return;initAudio();let c=newCode();
   MP.role='host';MP.code=c;MP.opp=null;$('#mpCodeShow').textContent='····';$('#mpWait').hidden=false;$('#mpInvite').hidden=!MP.room.p2p;mpMsg('');renderMpList();mpStatus();
   if(MP.room.p2p){let ok=false;for(let i=0;i<4&&!ok&&MP.role==='host';i++){try{await MP.room.host(c);ok=true;}catch(e){if(e&&e.type==='unavailable-id'){c=newCode();continue;}mpMsg(peerErr(e));mpReset();return;}}
     if(!ok||MP.role!=='host')return;MP.code=c;MP.room.onError=e=>{if(!MP.on)mpMsg(peerErr(e));};}
-  setPresence({nick:myNick(),host:c,join:null,opp:null,st:null,g:null});$('#mpCodeShow').textContent=c;mpStatus();}
+  setPresence({nick:myNick(),host:c,join:null,opp:null,st:null,g:null,map:MAPID,mode:MODE});$('#mpCodeShow').textContent=c;mpStatus();}
 function peerErr(e){const t=e&&e.type;if(t==='peer-unavailable')return'No match with that code is open. Check the code and that your friend is hosting.';
   if(t==='network'||t==='server-error'||t==='socket-error'||t==='socket-closed')return'Could not reach the matchmaking server. Check your internet and try again.';
   if(t==='browser-incompatible')return'This browser cannot do direct connections. Try Chrome Edge or Firefox.';return'Connection failed'+(t?' ('+t+')':'')+'. Try again.';}
@@ -2049,7 +2050,7 @@ function sqLeave(){clearInterval(SQ.lobbyIv);if(SQ.net){SQ.net.stop();SQ.net=nul
   P.sqT=undefined;$('#sqWait').hidden=true;$('#sqHost').disabled=$('#sqJoin').disabled=false;}
 function inviteLink(){return location.origin+location.pathname+('?map='+MAPID+'&mode='+MODE)+'#join-'+MP.code;}
 function mpJoin(code){code=String(code||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,4);if(!MP.room||MP.role||code.length!==4){if(code.length!==4)mpMsg('Enter the 4-letter code from your friend.');return;}
-  initAudio();MP.role='guest';MP.joinCode=code;MP.opp=null;setPresence({nick:myNick(),join:code,host:null,opp:null,st:null,g:null});mpMsg('Joining. Waiting for the host.',false);renderMpList();mpStatus();
+  initAudio();MP.role='guest';MP.joinCode=code;MP.opp=null;setPresence({nick:myNick(),join:code,host:null,opp:null,st:null,g:null,map:MAPID,mode:MODE});mpMsg('Joining. Waiting for the host.',false);renderMpList();mpStatus();
   if(MP.room.p2p){MP.room.onError=e=>{if(MP.role==='guest'&&!MP.on){mpMsg(peerErr(e));mpReset();}};MP.room.join(code).catch(e=>{if(MP.role==='guest'){mpMsg(peerErr(e));mpReset();}});}
   setTimeout(()=>{if(MP.role==='guest'&&!MP.opp){mpMsg('No match with code '+code+' answered. Check the code and that your friend still has the Host screen open.');mpReset();}},25000);}
 function mpReset(){MP.role=null;MP.code=null;MP.joinCode=null;MP.opp=null;MP.g=null;MP.snaps=[];MP.lastSt=null;setPresence({host:null,join:null,opp:null,st:null,g:null});if(MP.room&&MP.room.p2p)MP.room.leave();$('#mpWait').hidden=true;renderMpList();mpStatus();}
