@@ -349,7 +349,7 @@ kbd{font:600 12px/1 var(--hud);color:var(--ink);background:rgba(236,228,210,.08)
 
 <div class="screen" id="menu">
   <div class="col">
-    <div class="eyebrow">Tactical 1v1 · Browser build · v25</div>
+    <div class="eyebrow">Tactical 1v1 · Browser build · v26</div>
     <h1 class="logo">Quarry<span>Duel</span></h1>
     <p class="lede">Buy rounds. Real recoil. One-tap headshots. Fight a bot that hears your footsteps or play a friend on this same page. First to <span id="ledeRounds">8</span> rounds wins.</p>
     <div class="spec"><span>Map <b id="mapName">Quarry</b></span><span>Size <b>56 × 76 m</b></span><span>Lanes <b id="mapLanes">Long · Mid · Yard</b></span></div><div class="spec" id="mapPick" style="margin-top:6px"></div><div class="spec" style="margin-top:6px"><span>Mode <b id="modeInfo"></b></span></div><div class="spec" id="modePick" style="margin-top:6px"></div>
@@ -1882,11 +1882,25 @@ function makePeerRoom(){
 }
 
 /* Net room: direct WebRTC (PeerJS) when it connects, plus a WebSocket relay over public MQTT brokers so a join still works on networks that block direct connections */
+/* ===== optional own relay server (Cloudflare Worker in /server). Set QD_SERVER after deploying it, or open the page with ?server=wss://NAME.workers.dev/ws ===== */
+const QD_SERVER='';
+const qdServerUrl=()=>{try{const m=/[?&]server=([^&]+)/.exec(location.search);if(m)return decodeURIComponent(m[1]);}catch(e){}return QD_SERVER;};
+const qdIsWs=u=>/\/ws(\?|$)/.test(u);
+const qdBrokers=(list)=>{const u=qdServerUrl();return u?[u,...list]:list;};
+function wsBroker(url,topic){
+  const room=topic.replace(/\/[hg]$/,'');const ev={};let ws=null,closed=false;
+  const api={connected:false,on(n,f){(ev[n]||(ev[n]=[])).push(f);return api;},subscribe(){},publish(t,m){if(ws&&ws.readyState===1){try{ws.send(JSON.stringify({t,m}));}catch(e){}}},end(){closed=true;try{ws&&ws.close();}catch(e){}}};
+  const open=()=>{if(closed)return;try{ws=new WebSocket(url+(url.includes('?')?'&':'?')+'r='+encodeURIComponent(room));}catch(e){setTimeout(open,3000);return;}
+    ws.onopen=()=>{api.connected=true;for(const f of ev.connect||[])f();};
+    ws.onmessage=e=>{try{const d=JSON.parse(e.data);for(const f of ev.message||[])f(d.t,{toString:()=>d.m});}catch(_){}};
+    ws.onclose=()=>{api.connected=false;if(!closed)setTimeout(open,3000);};ws.onerror=()=>{};};
+  open();return api;}
+const qdConnect=(url,o,topic)=>qdIsWs(url)?wsBroker(url,topic):window.mqtt.connect(url,o);
 function makeNetRoom(){
   const me='pc-'+Math.random().toString(36).slice(2,10);let mine={},otherId=null,otherPr={},otherAt=0,peer=null,conn=null,snap=Object.freeze([]);const hs=[],cs=[];
   let code=null,role=null,pubT=null,subT=null,lastRelay=0,relayDirty=false;const brokers=[];
   const popts=/peerlocal/.test(location.search)?{host:'127.0.0.1',port:9000,path:'/qd',secure:false,debug:0}:{debug:0,config:{iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'},{urls:'stun:stun.cloudflare.com:3478'},{urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turn:openrelay.metered.ca:443?transport=tcp'],username:'openrelayproject',credential:'openrelayproject'}],iceCandidatePoolSize:4}};
-  const BROKERS=/mqttlocal/.test(location.search)?['ws://127.0.0.1:9001']:/nomqtt/.test(location.search)?[]:['wss://broker.emqx.io:8084/mqtt','wss://broker.hivemq.com:8884/mqtt','wss://mqtt.eclipseprojects.io:443/mqtt','wss://test.mosquitto.org:8081'];
+  const BROKERS=qdBrokers(/mqttlocal/.test(location.search)?['ws://127.0.0.1:9001']:/nomqtt/.test(location.search)?[]:['wss://broker.emqx.io:8084/mqtt','wss://broker.hivemq.com:8884/mqtt','wss://mqtt.eclipseprojects.io:443/mqtt','wss://test.mosquitto.org:8081']);
   const noPeer=/nopeer/.test(location.search)||typeof window.Peer!=='function';
   const mk=(id,pr,isMe)=>Object.freeze({peer:id,by:null,isMe,sameTab:isMe,kind:'viewer',guest:false,presence:Object.freeze(pr),updatedAt:Date.now()});
   const alive=()=>otherId&&performance.now()-otherAt<6000;
@@ -1902,15 +1916,15 @@ function makeNetRoom(){
   setInterval(()=>{if(relayDirty||(pubT&&performance.now()-lastRelay>900))relaySend(true);if(otherId&&!alive()){otherId=null;otherPr={};onMsg.n=0;fire();}},120);
   const wire=c=>{conn=c;c.on('open',()=>{send();});c.on('data',d=>onMsg(d,'direct'));c.on('close',()=>{if(conn===c)conn=null;});c.on('error',()=>{});};
   const makePeer=id=>new Promise((res,rej)=>{const pp=id?new Peer(id,popts):new Peer(popts);let done=false;pp.on('open',()=>{done=true;res(pp);});pp.on('error',e=>{if(!done){done=true;try{pp.destroy();}catch(_){}rej(e);}});setTimeout(()=>{if(!done){done=true;rej(new Error('peer timeout'));}},7000);});
-  const relayStart=()=>new Promise(res=>{if(!window.mqtt||!BROKERS.length){res(0);return;}let up=0,settled=false;const fin=()=>{if(!settled){settled=true;res(up);}};
-    for(const url of BROKERS){try{const c=window.mqtt.connect(url,{clientId:'qd'+me+Math.random().toString(36).slice(2,6),clean:true,connectTimeout:6000,reconnectPeriod:3000,keepalive:30});brokers.push(c);
+  const relayStart=()=>new Promise(res=>{if(!BROKERS.some(qdIsWs)&&!window.mqtt||!BROKERS.length){res(0);return;}let up=0,settled=false;const fin=()=>{if(!settled){settled=true;res(up);}};
+    for(const url of BROKERS){try{const c=qdConnect(url,{clientId:'qd'+me+Math.random().toString(36).slice(2,6),clean:true,connectTimeout:6000,reconnectPeriod:3000,keepalive:30},subT);brokers.push(c);
         c.on('connect',()=>{up++;if(subT)c.subscribe(subT,{qos:0});relaySend(true);fin();});c.on('message',(t,m)=>{if(t!==subT)return;try{onMsg(JSON.parse(m.toString()),'relay');}catch(e){}});c.on('error',()=>{});}catch(e){}}
     setTimeout(fin,12000);});
   const start=async(r,c)=>{await api.leave();role=r;code=c;const base='qd1/'+PEER_PREFIX+c+'/';pubT=base+(r==='host'?'h':'g');subT=base+(r==='host'?'g':'h');
     const relayP=relayStart();let peerOk=false;
     if(!noPeer){try{if(r==='host'){peer=await makePeer(PEER_PREFIX+c);peer.on('connection',cn=>{if(direct()){cn.on('open',()=>{try{cn.close();}catch(_){}});return;}wire(cn);});peer.on('disconnected',()=>{try{if(peer&&!peer.destroyed)peer.reconnect();}catch(_){}});peer.on('error',()=>{});}
         else{peer=await makePeer(null);peer.on('error',()=>{});wire(peer.connect(PEER_PREFIX+c,{reliable:false,serialization:'json'}));}peerOk=true;}catch(e){peer=null;if(e&&e.type==='unavailable-id')throw e;}}
-    const up=await relayP;api.relayUp=up;api.peerUp=peerOk;if(!peerOk&&!up&&!(window.mqtt&&BROKERS.length)){const er=new Error('no transport');er.type='network';throw er;}send();};
+    const up=await relayP;api.relayUp=up;api.peerUp=peerOk;if(!peerOk&&!up&&!((window.mqtt||BROKERS.some(qdIsWs))&&BROKERS.length)){const er=new Error('no transport');er.type='network';throw er;}send();};
   const api={p2p:true,onError:null,via:null,relayUp:0,peerUp:false,
     presence:async patch=>{const n={...mine};for(const k in patch){if(patch[k]===null)delete n[k];else n[k]=patch[k];}mine=n;fire();send();},
     onPeers:h=>{hs.push(h);setTimeout(()=>h({peers:snap,joined:[],left:[],updated:[]}),0);return()=>{};},
@@ -1987,11 +2001,11 @@ let SQON=false;
 const SQ={net:null,role:null,code:null,roster:[],sc:[0,0],lk:null,hits:[],hitSeq:0,lastSend:0,lastLobby:0,hostAt:0,live:false,over:false};
 function makeSquadNet(){
   const me='sq'+Math.random().toString(36).slice(2,9);const peers=new Map();let topic=null,mine={},seq=0,lastPub=0,dirty=false,cs=[],iv=0;
-  const urls=/mqttlocal/.test(location.search)?['ws://127.0.0.1:9001']:['wss://broker.emqx.io:8084/mqtt','wss://broker.hivemq.com:8884/mqtt','wss://mqtt.eclipseprojects.io:443/mqtt','wss://test.mosquitto.org:8081'];
+  const urls=qdBrokers(/mqttlocal/.test(location.search)?['ws://127.0.0.1:9001']:['wss://broker.emqx.io:8084/mqtt','wss://broker.hivemq.com:8884/mqtt','wss://mqtt.eclipseprojects.io:443/mqtt','wss://test.mosquitto.org:8081']);
   const pub=()=>{lastPub=performance.now();dirty=false;const m=JSON.stringify({id:me,n:++seq,p:mine});for(const c of cs)if(c.connected){try{c.publish(topic,m,{qos:0});}catch(e){}}};
   const api={me,peers,up:0,set(patch){Object.assign(mine,patch);dirty=true;},
     start(code){topic='qd1/'+PEER_PREFIX+'sq/'+code;
-      for(const u of urls){try{const c=window.mqtt.connect(u,{clientId:'qds'+me+Math.random().toString(36).slice(2,5),clean:true,connectTimeout:6000,reconnectPeriod:3000,keepalive:30});cs.push(c);
+      for(const u of urls){try{const c=qdConnect(u,{clientId:'qds'+me+Math.random().toString(36).slice(2,5),clean:true,connectTimeout:6000,reconnectPeriod:3000,keepalive:30},topic);cs.push(c);
         c.on('connect',()=>{c.subscribe(topic,{qos:0});dirty=true;});c.on('error',()=>{});
         c.on('message',(t,m)=>{if(t!==topic)return;let d;try{d=JSON.parse(m.toString());}catch(e){return;}if(!d||!d.id||d.id===me||!d.p||typeof d.p!=='object')return;const id=String(d.id).slice(0,24);const o=peers.get(id);if(o&&d.n<=o.n&&o.n-d.n<300)return;peers.set(id,{pr:d.p,n:d.n,at:performance.now(),first:o?o.first:performance.now()});});}catch(e){}}
       iv=setInterval(()=>{const t=performance.now();api.up=cs.filter(c=>c.connected).length;if((dirty&&t-lastPub>=60)||t-lastPub>900)pub();for(const [id,o] of peers)if(t-o.at>12000)peers.delete(id);},30);},
@@ -2002,7 +2016,7 @@ function sqRender(){const el=$('#sqRoster');if(!el)return;const me=SQ.net&&SQ.ne
   const t=[[],[]];for(const r of SQ.roster)t[r[2]].push(r[1]+(r[0]===me?' (you)':''));
   el.textContent='Team A: '+(t[0].join(', ')||'-')+'   Team B: '+(t[1].join(', ')||'-')+'   ·   '+SQ.roster.length+' of 4';}
 function sqOpen(role,code){
-  if(!window.mqtt){sqMsg('2v2 needs the internet relay and it did not load. Reload the page.');return false;}
+  if(!window.mqtt&&!qdServerUrl()){sqMsg('2v2 needs the internet relay and it did not load. Reload the page.');return false;}
   if(SQ.net||MP.role||QM)return false;if(MISSION||MAPID==='house'){sqMsg('Pick Classic or Team 5v5 mode first. 2v2 does not work with mission maps.');return false;}
   SQ.net=makeSquadNet();SQ.role=role;SQ.code=code;SQ.roster=[];SQ.sc=[0,0];SQ.live=false;SQ.over=false;SQ.hostAt=performance.now();SQ.openAt=performance.now();
   SQ.net.start(code);SQ.net.set({nick:myNick(),role,join:code});
@@ -3016,12 +3030,12 @@ $('#mpHost').addEventListener('click',mpHost);
 let QM=null;
 function qmStop(){if(!QM)return;clearInterval(QM.iv);for(const c of QM.cs){try{c.end(true);}catch(e){}}QM=null;$('#mpQuick').disabled=false;}
 function mpQuick(){
-  if(!MP.room||!MP.room.p2p||MP.role||QM)return;if(!window.mqtt){mpMsg('Quick match needs the internet relay. Use a host code instead.');return;}
+  if(!MP.room||!MP.room.p2p||MP.role||QM)return;if(!window.mqtt&&!qdServerUrl()){mpMsg('Quick match needs the internet relay. Use a host code instead.');return;}
   initAudio();const topic='qd1/'+PEER_PREFIX+'lobby/'+MAPID+'/'+MODE,myId=Math.random().toString(36).slice(2,10);
-  const urls=/mqttlocal/.test(location.search)?['ws://127.0.0.1:9001']:['wss://broker.emqx.io:8084/mqtt','wss://broker.hivemq.com:8884/mqtt','wss://mqtt.eclipseprojects.io:443/mqtt'];
+  const urls=qdBrokers(/mqttlocal/.test(location.search)?['ws://127.0.0.1:9001']:['wss://broker.emqx.io:8084/mqtt','wss://broker.hivemq.com:8884/mqtt','wss://mqtt.eclipseprojects.io:443/mqtt']);
   const q=QM={cs:[],t0:performance.now(),phase:'search',iv:0};$('#mpQuick').disabled=true;mpMsg('Searching for a player on this map and mode.',false);
   const pub=m=>{const j=JSON.stringify(m);for(const c of q.cs)if(c.connected){try{c.publish(topic,j,{qos:0});}catch(e){}}};
-  for(const u of urls){try{const c=window.mqtt.connect(u,{clientId:'qdq'+myId+Math.random().toString(36).slice(2,5),clean:true,connectTimeout:6000,reconnectPeriod:3000});q.cs.push(c);
+  for(const u of urls){try{const c=qdConnect(u,{clientId:'qdq'+myId+Math.random().toString(36).slice(2,5),clean:true,connectTimeout:6000,reconnectPeriod:3000},topic);q.cs.push(c);
     c.on('connect',()=>c.subscribe(topic,{qos:0}));c.on('error',()=>{});
     c.on('message',(t,m)=>{if(QM!==q)return;let d;try{d=JSON.parse(m.toString());}catch(e){return;}if(!d||d.id===myId||d.t!=='open'||!/^[A-Z0-9]{4}$/.test(d.code||''))return;
       if(q.phase==='search'){q.phase='join';const code=d.code;qmStop();$('#mpCode').value=code;mpJoin(code);}
