@@ -389,7 +389,7 @@ kbd{font:600 12px/1 var(--hud);color:var(--ink);background:rgba(236,228,210,.08)
     <button class="rail-b" id="creditsBtn" type="button" title="Credits"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></svg></button>
   </nav>
   <section class="mm">
-    <header class="mm-head"><h1 class="logo">Quarry<span>Duel</span></h1><div class="eyebrow">Browser build · v27</div></header>
+    <header class="mm-head"><h1 class="logo">Quarry<span>Duel</span></h1><div class="eyebrow">Browser build · v28</div></header>
     <div class="mm-tabs" id="modePick" role="tablist" aria-label="Game mode"></div>
     <div class="mm-info"><span id="modeInfo"></span></div>
     <div class="mm-maps" id="mapPick" aria-label="Map"></div>
@@ -511,7 +511,7 @@ kbd{font:600 12px/1 var(--hud);color:var(--ink);background:rgba(236,228,210,.08)
     <div class="mp-wait" id="sqWait" hidden><span>2v2 lobby. Code</span><b id="sqCodeShow">----</b><button class="ghost" id="sqInvite" type="button">Copy invite link</button><button class="play" id="sqStart" type="button" style="min-width:0;padding:10px 18px;font-size:17px">Start match</button><button class="ghost" id="sqCancel" type="button">Cancel</button><div id="sqRoster" style="flex-basis:100%;font-size:14px;opacity:.9"></div></div>
     <div class="mp-wait" id="mpWait" hidden><span>Waiting for your friend. Press Start game to play a bot until they join. Code</span><b id="mpCodeShow">----</b><button class="ghost" id="mpInvite" type="button" hidden>Copy invite link</button><button class="play" id="mpStartNow" type="button" style="min-width:0;padding:10px 18px;font-size:17px">Start game</button><button class="ghost" id="mpCancel" type="button">Cancel</button></div>
     <p class="err" id="mpMsg" hidden></p>
-    <p class="note">Share this page with your friend from the Share menu. You both need to be signed in to Claude with this page open. One of you hosts and the other joins.</p>
+    <p class="note">Host a match and send your friend the invite link. They tap it and join in a few seconds. No sign in needed. Your room code stays the same every time so the same link keeps working.</p>
     <button class="ghost" id="mpBack" type="button" style="justify-self:start">Back</button>
   </div>
 </div>
@@ -1450,7 +1450,7 @@ function buildArms(info,sleeve,glove,cuff,scale=1,tp=false){
 const vmRoot=new THREE.Group();vmScene.add(vmRoot);
 const vmModels={};
 let vmSun;
-const VMPOS={k7:[.16,-.2,-.44],l4:[.16,-.198,-.44],v9:[.15,-.19,-.42],lb:[.16,-.205,-.43],p9:[.14,-.17,-.42],h50:[.14,-.175,-.43],knife:[.17,-.19,-.4]};
+const VMPOS={k7:[.16,-.2,-.44],l4:[.16,-.198,-.44],v9:[.15,-.19,-.42],lb:[.16,-.205,-.43],p9:[.13,-.145,-.47],h50:[.13,-.15,-.48],knife:[.17,-.19,-.4]};
 const VMROT={};
 const ADSPOS={};
 let ARMS=null;
@@ -1956,7 +1956,7 @@ function makeNetRoom(){
   const onMsg=(d,via)=>{if(!d||d.t!=='p'||!d.p||typeof d.p!=='object'||d.id===me)return;const id=String(d.id).slice(0,40);if(otherId&&otherId!==id&&alive())return;
     if(via==='relay'&&direct()&&performance.now()-(onMsg.dAt||0)<1500)return;if(via==='direct')onMsg.dAt=performance.now();
     if(d.n!=null){if(otherId===id&&d.n<=(onMsg.n||0)&&d.n>(onMsg.n||0)-200)return;onMsg.n=d.n;}
-    otherId=id;otherPr=d.p;otherAt=performance.now();api.via=via;fire();};
+    const fresh=otherId!==id;otherId=id;otherPr=d.p;otherAt=performance.now();api.via=via;fire();if(fresh)relaySend(true);};
   let seq=0;
   const relaySend=force=>{if(!pubT)return;const nowT=performance.now();const gap=direct()?1500:45;if(!force&&nowT-lastRelay<gap){relayDirty=true;return;}lastRelay=nowT;relayDirty=false;const msg=JSON.stringify({t:'p',id:me,n:++seq,p:mine});for(const b of brokers){if(b.connected){try{b.publish(pubT,msg,{qos:0});}catch(e){}}}};
   const send=()=>{if(direct()){try{conn.send({t:'p',id:me,n:++seq,p:mine});}catch(e){}}relaySend(false);};
@@ -1967,18 +1967,26 @@ function makeNetRoom(){
     for(const url of BROKERS){try{const c=qdConnect(url,{clientId:'qd'+me+Math.random().toString(36).slice(2,6),clean:true,connectTimeout:6000,reconnectPeriod:3000,keepalive:30},subT);brokers.push(c);
         c.on('connect',()=>{up++;if(subT)c.subscribe(subT,{qos:0});relaySend(true);fin();});c.on('message',(t,m)=>{if(t!==subT)return;try{onMsg(JSON.parse(m.toString()),'relay');}catch(e){}});c.on('error',()=>{});}catch(e){}}
     setTimeout(fin,12000);});
-  const start=async(r,c)=>{await api.leave();role=r;code=c;const base='qd1/'+PEER_PREFIX+c+'/';pubT=base+(r==='host'?'h':'g');subT=base+(r==='host'?'g':'h');
-    const relayP=relayStart();let peerOk=false;
-    if(!noPeer){try{if(r==='host'){peer=await makePeer(PEER_PREFIX+c);peer.on('connection',cn=>{if(direct()){cn.on('open',()=>{try{cn.close();}catch(_){}});return;}wire(cn);});peer.on('disconnected',()=>{try{if(peer&&!peer.destroyed)peer.reconnect();}catch(_){}});peer.on('error',()=>{});}
-        else{peer=await makePeer(null);peer.on('error',()=>{});wire(peer.connect(PEER_PREFIX+c,{reliable:false,serialization:'json'}));}peerOk=true;}catch(e){peer=null;if(e&&e.type==='unavailable-id')throw e;}}
-    const up=await relayP;api.relayUp=up;api.peerUp=peerOk;if(!peerOk&&!up&&!((window.mqtt||BROKERS.some(qdIsWs))&&BROKERS.length)){const er=new Error('no transport');er.type='network';throw er;}send();};
+  let gen=0;
+  const start=async(r,c)=>{await api.leave();const g=++gen;role=r;code=c;const base='qd1/'+PEER_PREFIX+c+'/';pubT=base+(r==='host'?'h':'g');subT=base+(r==='host'?'g':'h');
+    const relayP=relayStart();let peerOk=false,peerErr=null,relayDone=false;
+    const peerP=noPeer?Promise.resolve(false):(async()=>{try{
+        if(r==='host'){const pp=await makePeer(PEER_PREFIX+c);if(g!==gen){try{pp.destroy();}catch(_){}return false;}peer=pp;peer.on('connection',cn=>{if(direct()){cn.on('open',()=>{try{cn.close();}catch(_){}});return;}wire(cn);});peer.on('disconnected',()=>{try{if(peer&&!peer.destroyed)peer.reconnect();}catch(_){}});peer.on('error',()=>{});}
+        else{const pp=await makePeer(null);if(g!==gen){try{pp.destroy();}catch(_){}return false;}peer=pp;peer.on('error',()=>{});wire(peer.connect(PEER_PREFIX+c,{reliable:false,serialization:'json'}));}
+        peerOk=true;api.peerUp=true;return true;}catch(e){peer=null;if(e&&e.type==='unavailable-id'&&r==='host'){peerErr=e;throw e;}return false;}})();
+    peerP.catch(e=>{if(g===gen&&api.onError)api.onError(e);});
+    // join as soon as ANY transport is up (relay usually < 1.5 s); the direct connection keeps finishing in the background
+    await new Promise(res=>{let done=false;const fin=()=>{if(!done){done=true;res();}};relayP.then(u=>{relayDone=true;api.relayUp=u;if(u)fin();});peerP.then(ok=>{if(ok)fin();},()=>fin());Promise.allSettled([relayP,peerP]).then(fin);setTimeout(fin,4000);});
+    if(g!==gen)return;if(peerErr)throw peerErr;
+    if(relayDone&&!api.relayUp&&!peerOk&&noPeer&&!(window.mqtt||BROKERS.some(qdIsWs))){const er=new Error('no transport');er.type='network';throw er;}
+    send();};
   const api={p2p:true,onError:null,via:null,relayUp:0,peerUp:false,
     presence:async patch=>{const n={...mine};for(const k in patch){if(patch[k]===null)delete n[k];else n[k]=patch[k];}mine=n;fire();send();},
     onPeers:h=>{hs.push(h);setTimeout(()=>h({peers:snap,joined:[],left:[],updated:[]}),0);return()=>{};},
     onConnection:h=>{cs.push(h);setTimeout(()=>h(true),0);return()=>{};},
     peers:()=>snap,connected:()=>true,
     host:c=>start('host',c),join:c=>start('guest',c),
-    async leave(){if(conn){try{conn.close();}catch(_){}conn=null;}otherId=null;otherPr={};onMsg.n=0;pubT=subT=null;role=code=null;while(brokers.length){const b=brokers.pop();try{b.end(true);}catch(_){}}if(peer){try{peer.destroy();}catch(_){}peer=null;}fire();}};
+    async leave(){gen++;if(conn){try{conn.close();}catch(_){}conn=null;}otherId=null;otherPr={};onMsg.n=0;pubT=subT=null;role=code=null;while(brokers.length){const b=brokers.pop();try{b.end(true);}catch(_){}}if(peer){try{peer.destroy();}catch(_){}peer=null;}fire();}};
   return api;
 }
 async function initRoom(){
@@ -2034,10 +2042,10 @@ function renderMpList(){
     const cd=document.createElement('small');cd.textContent=String(pe.presence.host).slice(0,4);b.append(nm,cd);b.disabled=!!MP.role;b.addEventListener('click',()=>mpJoin(String(pe.presence.host)));list.appendChild(b);}
 }
 function newCode(){const A='ABCDEFGHJKMNPQRSTUVWXYZ23456789';let c='';for(let i=0;i<4;i++)c+=A[(Math.random()*A.length)|0];return c;}
-async function mpHost(){if(!MP.room||MP.role)return;initAudio();let c=newCode();
+async function mpHost(){if(!MP.room||MP.role)return;initAudio();let c=newCode();try{const sv=localStorage.getItem('qd_hostcode');if(/^[A-Z0-9]{4}$/.test(sv||''))c=sv;}catch(e){}
   MP.role='host';MP.code=c;MP.opp=null;$('#mpCodeShow').textContent='····';$('#mpWait').hidden=false;$('#mpInvite').hidden=!MP.room.p2p;mpMsg('');renderMpList();mpStatus();
   if(MP.room.p2p){let ok=false;for(let i=0;i<4&&!ok&&MP.role==='host';i++){try{await MP.room.host(c);ok=true;}catch(e){if(e&&e.type==='unavailable-id'){c=newCode();continue;}mpMsg(peerErr(e));mpReset();return;}}
-    if(!ok||MP.role!=='host')return;MP.code=c;MP.room.onError=e=>{if(!MP.on)mpMsg(peerErr(e));};}
+    if(!ok||MP.role!=='host')return;MP.code=c;try{localStorage.setItem('qd_hostcode',c);}catch(e){}MP.room.onError=e=>{if(!MP.on)mpMsg(peerErr(e));};}
   setPresence({nick:myNick(),host:c,join:null,opp:null,st:null,g:null,map:MAPID,mode:MODE});$('#mpCodeShow').textContent=c;mpStatus();}
 function peerErr(e){const t=e&&e.type;if(t==='peer-unavailable')return'No match with that code is open. Check the code and that your friend is hosting.';
   if(t==='network'||t==='server-error'||t==='socket-error'||t==='socket-closed')return'Could not reach the matchmaking server. Check your internet and try again.';
@@ -2161,7 +2169,7 @@ function sqTick(dt){
   for(const e of BOTS){if(!e.peerId||e.off)continue;if(!n.peers.has(e.peerId)&&t-(e.goneAt||(e.goneAt=t))>12000){e.peerId=null;e.sqUsed=false;e.off=true;e.alive=false;if(e.rig)e.rig.root.visible=false;continue;}if(n.peers.has(e.peerId))e.goneAt=0;sqUpdateRemote(e,dt);}
   if(!P.alive&&state==='live'){P.respawnT-=dt;if(P.respawnT<=0)sqRespawn();}
   if(t-SQ.lastSend>=45){SQ.lastSend=t;
-    const st={x:r2(P.p.x),y:r2(P.p.y),z:r2(P.p.z),yw:r3(P.yaw),pt:r3(P.pitch),cr:r2(P.crouch),w:P.cur,a:P.alive?1:0,hp:Math.max(0,P.hp),vx:r2(P.v.x),vz:r2(P.v.z),rl:P.reloading>0?1:0,fs:MP.shotN,fo:MP.shotInfo,hits:SQ.hits,kb:SQ.kb||null,d:P.deaths};
+    const st={x:r2(P.p.x),y:r2(P.p.y),z:r2(P.p.z),yw:r3(P.yaw),pt:r3(P.pitch),cr:r2(P.crouch),w:P.cur,a:P.alive?1:0,hp:Math.max(0,P.hp),vx:r2((P.av||P.v).x),vz:r2((P.av||P.v).z),rl:P.reloading>0?1:0,fs:MP.shotN,fo:MP.shotInfo,hits:SQ.hits,kb:SQ.kb||null,d:P.deaths};
     const patch={st};if(SQ.role==='host')patch.g={ph:state==='over'?'over':'live',r:SQ.roster,map:MAPID,sc:SQ.sc};n.set(patch);}
 }
 function sqLobbyTick2(){const n=SQ.net;const ids=[...n.peers].filter(([id,o])=>o.pr&&o.pr.join===SQ.code&&o.pr.role==='guest').sort((a,b)=>a[1].first-b[1].first).map(([id])=>id);
@@ -2225,7 +2233,7 @@ function onHostG(g){
 function sendState(){
   if(!MP.room||!MP.on)return;
   const st={r:MP.rd,x:r2(P.p.x),y:r2(P.p.y),z:r2(P.p.z),yw:r3(P.yaw),pt:r3(P.pitch),cr:r2(P.crouch),w:P.cur,a:P.alive?1:0,hp:Math.max(0,P.hp),
-    vx:r2(P.v.x),vz:r2(P.v.z),rl:P.reloading>0?1:0,fs:MP.shotN,fo:MP.shotInfo,hits:MP.myHits,kb:MP.kb,as:STRIKE.out,k:P.kills,d:P.deaths};
+    vx:r2((P.av||P.v).x),vz:r2((P.av||P.v).z),rl:P.reloading>0?1:0,fs:MP.shotN,fo:MP.shotInfo,hits:MP.myHits,kb:MP.kb,as:STRIKE.out,k:P.kills,d:P.deaths};
   const patch={st,nick:myNick()};
   if(MP.role==='host'){const tl=state==='live'?roundT:phaseT;patch.g={rd:MP.rd,ph:state==='over'?'over':state,tl:Math.max(0,Math.round(tl*10)/10),sp:[score.p,score.b],win:MP.lastWin,why:MP.lastWhy,rw:MP.rw,sm:MP.sm,rt:MP.rt};}
   MP.room.presence(patch).catch(()=>{});
@@ -2466,9 +2474,9 @@ let adsK=0,sprintK=0,camRoll=0;
 function canADS(){const w=WEAPONS[P.cur];return P.ads&&P.alive&&!w.melee&&!w.scope&&P.reloading<=0&&vm.drawT>.8;}
 function updatePlayer(dt){
   const wantC=!!keys.KeyC&&P.alive;P.crouch=clamp(P.crouch+(wantC?1:-1)*dt*7,0,1);P.eye=lerp(1.62,1.12,P.crouch);
-  if(!P.alive){P.deathT+=dt;P.eye=lerp(1.62,.32,ss(0,.7,P.deathT));P.v.set(0,0,0);return;}
+  if(!P.alive){P.deathT+=dt;P.eye=lerp(1.62,.32,ss(0,.7,P.deathT));P.v.set(0,0,0);if(P.av)P.av.set(0,0,0);P.eyeOff=0;return;}
   const w=WEAPONS[P.cur];let maxS=w.speed*(P.scoped?.6:1);const fwdKey=keys.KeyW&&!keys.KeyS;const sprinting=(keys.ShiftLeft||keys.ShiftRight)&&fwdKey&&P.onGround&&P.crouch<.3&&!P.scoped&&!canADS()&&!mouse.l&&P.reloading<=0;P.sprint=sprinting;
-  if(sprinting)maxS*=1.32;if(canADS())maxS*=.62;adsK=clamp(adsK+(canADS()?1:-1)*dt*7.5,0,1);sprintK=clamp(sprintK+(sprinting&&Math.hypot(P.v.x,P.v.z)>3?1:-1)*dt*5,0,1);if(P.crouch>.5)maxS*=.34;if(state==='freeze'||buyOpen)maxS=0;
+  if(sprinting)maxS*=1.32;if(canADS())maxS*=.62;adsK=clamp(adsK+(canADS()?1:-1)*dt*7.5,0,1);sprintK=clamp(sprintK+(sprinting&&Math.hypot((P.av||P.v).x,(P.av||P.v).z)>3?1:-1)*dt*5,0,1);if(P.crouch>.5)maxS*=.34;if(state==='freeze'||buyOpen)maxS=0;
   const fx=(keys.KeyW?1:0)-(keys.KeyS?1:0),sx=(keys.KeyD?1:0)-(keys.KeyA?1:0);const sy=Math.sin(P.yaw),cy=Math.cos(P.yaw);
   let wx=-sy*fx+cy*sx,wz=-cy*fx-sy*sx;const wl=Math.hypot(wx,wz);if(wl>0){wx/=wl;wz/=wl;}
   let tx=wx*maxS,tz=wz*maxS;
@@ -2477,12 +2485,14 @@ function updatePlayer(dt){
   if(P.onGround){const dvx=tx-P.v.x,dvz=tz-P.v.z,dl=Math.hypot(dvx,dvz),st=(wl>0?48:58)*dt;if(dl<=st){P.v.x=tx;P.v.z=tz;}else{P.v.x+=dvx/dl*st;P.v.z+=dvz/dl*st;}}
   else{P.v.x+=wx*8*dt;P.v.z+=wz*8*dt;const hs=Math.hypot(P.v.x,P.v.z),cap=Math.max(maxS,w.speed);if(hs>cap){P.v.x*=cap/hs;P.v.z*=cap/hs;}}
   if(keys.Space&&P.onGround&&state!=='freeze'&&!buyOpen&&!P.jumpLatch){P.v.y=7;P.onGround=false;P.jumpLatch=true;}
-  P.v.y-=GRAV*dt;moveCollide(P,P.v.x*dt,P.v.z*dt);P.p.y+=P.v.y*dt;
+  P.v.y-=GRAV*dt;const px0=P.p.x,pz0=P.p.z,py0=P.p.y,gnd0=P.onGround;moveCollide(P,P.v.x*dt,P.v.z*dt);P.p.y+=P.v.y*dt;
+  {const av=P.av||(P.av=V3());const k=1-Math.exp(-dt*20),inv=1/Math.max(dt,1e-3);av.x+=((P.p.x-px0)*inv-av.x)*k;av.z+=((P.p.z-pz0)*inv-av.z)*k;}
   const g=groundAt(P.p,P.r);
   if(P.p.y<=g){if(!P.onGround&&P.v.y<-5){vm.land=1;sStep(null,.4);}P.p.y=g;P.v.y=0;P.onGround=true;}
   else if(P.onGround&&P.p.y-g<STEP&&P.v.y<=0){P.p.y=g;}else P.onGround=false;
+  {const dy=P.p.y-py0;if(gnd0&&P.onGround&&Math.abs(dy)>.015&&Math.abs(dy)<=STEP+.05)P.eyeOff=(P.eyeOff||0)-dy;P.eyeOff=(P.eyeOff||0)*Math.exp(-dt*12);if(Math.abs(P.eyeOff)<1e-3)P.eyeOff=0;}
   // footsteps
-  const hs=Math.hypot(P.v.x,P.v.z);
+  const hs=Math.hypot(P.av.x,P.av.z);
   if(P.onGround&&hs>3.3){P.stepAcc+=hs*dt;if(P.stepAcc>2.1){P.stepAcc=0;sStep(null,.22);botHear(P.p,24);}}
   // auto fire
   if(mouse.l&&w.auto&&!buyOpen)playerFire();
@@ -2492,8 +2502,8 @@ function updatePlayer(dt){
 }
 function updateCamera(dt){
   if(state==='menu'||state==='loading'||state==='over'){const t=performance.now()*.00004;camera.position.set(MAPC.x+Math.cos(t)*62,30,MAPC.z+Math.sin(t)*62);camera.lookAt(MAPC.x,0,MAPC.z);return;}
-  camera.position.set(P.p.x,P.p.y+P.eye,P.p.z);
-  {const sy2=Math.sin(P.yaw),cy2=Math.cos(P.yaw),lat2=(P.v.x*cy2-P.v.z*sy2)/5.5;camRoll=lerp(camRoll,-lat2*.022*(1-adsK),1-Math.exp(-dt*8));}
+  camera.position.set(P.p.x,P.p.y+P.eye+(P.eyeOff||0),P.p.z);
+  {const av2=P.av||P.v,sy2=Math.sin(P.yaw),cy2=Math.cos(P.yaw),lat2=(av2.x*cy2-av2.z*sy2)/5.5;camRoll=lerp(camRoll,-lat2*.022*(1-adsK),1-Math.exp(-dt*8));}
   camera.rotation.set(P.pitch+P.recoilP*.48+Math.sin(vm.bob*2)*.0035*sprintK+(STRIKE.shake>.01?(Math.random()-.5)*STRIKE.shake*.06:0),P.yaw+P.recoilY*.48+Math.sin(vm.bob)*.003*sprintK+(STRIKE.shake>.01?(Math.random()-.5)*STRIKE.shake*.06:0),P.alive?camRoll:-.5*ss(0,.7,P.deathT));
   const tf=P.scoped===2?12:P.scoped===1?34:(P.ads&&!WEAPONS[P.cur].melee&&!WEAPONS[P.cur].scope)?settings.fov*.62:settings.fov+6*sprintK;fovNow=lerp(fovNow,tf,1-Math.exp(-dt*22));if(Math.abs(camera.fov-fovNow)>.01){camera.fov=fovNow;camera.updateProjectionMatrix();}
 }
@@ -2514,8 +2524,8 @@ function partPoint(part,pLocal,rest){ // where a point that rides on a moving pa
 function updateVMReal(dt,md,info,w){
   const base=VMPOS[P.cur],br=VMROT[P.cur],sp=info.spec,parts=info.parts||{};
   // locomotion and look sway feed a spring so the gun lags and settles instead of snapping
-  const hs=Math.hypot(P.v.x,P.v.z),sr=P.onGround?clamp(hs/5.2,0,1):0;vm.bob+=dt*hs*1.7;
-  const syw=Math.sin(P.yaw),cyw=Math.cos(P.yaw),lat=(P.v.x*cyw-P.v.z*syw)/5.5,fwd=(-P.v.x*syw-P.v.z*cyw)/5.5;
+  const pav=P.av||P.v,hs=Math.hypot(pav.x,pav.z),sr=P.onGround?clamp(hs/5.2,0,1):0;vm.bob+=dt*hs*1.7;
+  const syw=Math.sin(P.yaw),cyw=Math.cos(P.yaw),lat=(pav.x*cyw-pav.z*syw)/5.5,fwd=(-pav.x*syw-pav.z*cyw)/5.5;
   vm.swayX*=Math.exp(-dt*9);vm.swayY*=Math.exp(-dt*9);
   if(vm.land>0){SPR.pv.y-=.45*vm.land;SPR.rv.x-=1.1*vm.land;vm.land=0;}
   const breath=Math.sin(now*1.7),air=P.onGround?0:1;
@@ -2610,7 +2620,7 @@ function updateVM(dt){
     vmRoot.position.set(0,-vm.wp*.1,vm.wp);vmRoot.rotation.x=vm.wp*.9;}
   const md=vmModels[P.cur],info=md.info,base=VMPOS[P.cur],w=WEAPONS[P.cur];
   if(info.real)return updateVMReal(dt,md,info,w);
-  const hs=Math.hypot(P.v.x,P.v.z),sr=P.onGround?clamp(hs/5.5,0,1):0;vm.bob+=dt*hs*1.85;
+  const hs=Math.hypot((P.av||P.v).x,(P.av||P.v).z),sr=P.onGround?clamp(hs/5.5,0,1):0;vm.bob+=dt*hs*1.85;
   const bx2=Math.sin(vm.bob)*.012*sr,by=-Math.abs(Math.cos(vm.bob))*.01*sr;
   vm.swayX*=Math.exp(-dt*9);vm.swayY*=Math.exp(-dt*9);vm.kick=Math.max(0,vm.kick-dt*(w.auto?14:8));vm.land=Math.max(0,vm.land-dt*4);
   vm.drawT=Math.min(1,vm.drawT+dt/.5);const de=1-Math.pow(1-vm.drawT,3);
@@ -3256,7 +3266,7 @@ async function boot(){
 })();
   initRoom().then(()=>{const sm=/^#squad-([A-Z0-9]{4})$/i.exec(location.hash);if(sm&&!touchOnly){openFriends();$('#sqCode').value=sm[1].toUpperCase();sqJoinLobby(sm[1]);return;}const m=/^#join-([A-Z0-9]{4})$/i.exec(location.hash);if(m&&MP.room&&!touchOnly){openFriends();$('#mpCode').value=m[1].toUpperCase();mpJoin(m[1]);}});
   requestAnimationFrame(frame);
-  window.__qd={dims:()=>[W,H,S],STRIKE,strikeEarn,strikeOpen,strikeLaunch,rinfo:()=>renderer.info,SQ,sqOn:()=>SQON,sqStartHost,sqHostLobby,sqJoinLobby,keys,MS,damage,BOTS,playerFire,setPausedDbg:setPaused,MP,settings,setSetting,mpHost,mpJoin,openFriends,openSettings,dbg:{gripHand,curlFingers,handFrame,restorePose,orientHand,twoBoneIK,wpos,solveVMArms,setPaused,animBotReal,animBotDeathReal,vmRecoil,updateVM},vmCam,vmScene,vmRoot,REAL,RTX,GUNSPEC,ARMS:()=>ARMS,P,bot,get state(){return state;},set state(v){state=v;},scene,camera,vmModels,WEAPONS,beginPlay,startMatch,grid,settings,setScopeDbg:setScope,vm,get now(){return now;}};
+  window.__qd={WEAPONS,dims:()=>[W,H,S],STRIKE,strikeEarn,strikeOpen,strikeLaunch,rinfo:()=>renderer.info,SQ,sqOn:()=>SQON,sqStartHost,sqHostLobby,sqJoinLobby,keys,MS,damage,BOTS,playerFire,setPausedDbg:setPaused,MP,settings,setSetting,mpHost,mpJoin,openFriends,openSettings,dbg:{gripHand,curlFingers,handFrame,restorePose,orientHand,twoBoneIK,wpos,solveVMArms,setPaused,animBotReal,animBotDeathReal,vmRecoil,updateVM},vmCam,vmScene,vmRoot,REAL,RTX,GUNSPEC,ARMS:()=>ARMS,P,bot,get state(){return state;},set state(v){state=v;},scene,camera,vmModels,WEAPONS,beginPlay,startMatch,grid,settings,setScopeDbg:setScope,vm,get now(){return now;}};
 }
 boot().catch(err=>{console.error(err);const e=$('#bootErr');e.hidden=false;e.textContent='Could not start the game: '+(err&&err.message?err.message:err);});
 </script>
