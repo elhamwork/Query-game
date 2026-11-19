@@ -261,34 +261,65 @@ kbd{font:600 12px/1 var(--hud);color:var(--ink);background:rgba(236,228,210,.08)
 .kf.mine{border-color:#d63a3a}
 .radar canvas{border-radius:0;border:1px solid rgba(255,255,255,.18);background:rgba(10,12,16,.55)}
 
-/* CS style menu */
-#menu .lede,#menu .spec:not(#mapPick),#menu #touchNote{display:none}
-#menu .spec#mapPick{margin:0 0 14px}
-#menu .keys{display:none}#menu .keys.on{display:grid}
-#menu .col{max-width:560px}
-#menu .logo{font-size:clamp(44px,7vw,84px);letter-spacing:-.01em;text-transform:uppercase}
-#menu .eyebrow{letter-spacing:.2em;text-transform:uppercase}
-#menu .field{margin:0 0 14px}
-#menu .btns{flex-direction:column;align-items:stretch;gap:8px;max-width:340px}
-#menu .btns .play,#menu .btns .ghost{border-radius:2px;text-transform:uppercase;letter-spacing:.14em;text-align:left;padding:14px 20px;font-size:17px}
-#menu .btns .play{background:rgba(93,121,174,.95);color:#fff;border:0}
-#menu .btns .ghost{background:rgba(10,12,18,.62);border:0;border-left:3px solid rgba(255,255,255,.25)}
-#menu .btns .ghost:hover{border-left-color:#e8a23a;background:rgba(10,12,18,.8)}
-#menu .btns.sub{flex-direction:row;flex-wrap:wrap;max-width:none}
-#menu .btns.sub .ghost{padding:10px 16px;font-size:14px;border-left-width:0;border-bottom:2px solid rgba(255,255,255,.25)}
-#menu .col{gap:14px}
-@media (max-height:700px){#menu .logo{font-size:clamp(34px,6vh,56px)}#menu .eyebrow{display:none}#menu .btns .play,#menu .btns .ghost{padding:10px 18px;font-size:15px}#menu .col{gap:10px}}
-.center .sp-col{text-align:center;justify-items:center;width:min(860px,96vw);max-width:none;margin:0 auto;justify-items:center}
-.sp-cards{display:flex;gap:20px;justify-content:center;margin:8px 0;flex-wrap:nowrap}
-.sp-card{position:relative;width:min(340px,44vw);height:min(380px,58vh);border:0;border-radius:3px;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;padding:26px 18px;cursor:pointer;font-family:inherit;text-transform:uppercase;letter-spacing:.1em;transition:transform .15s,filter .15s}
-.sp-card:hover,.sp-card:focus-visible{transform:translateY(-6px);filter:brightness(1.15);outline:0}
-.sp-card.ct{background:linear-gradient(180deg,rgba(70,98,150,.25),rgba(70,98,150,.95)),#0e1624}
-.sp-card.t{background:linear-gradient(180deg,rgba(214,146,44,.2),rgba(214,146,44,.95)),#241707}
-.sp-card.t b,.sp-card.t small{color:#1a1206}
-.sp-tag{position:absolute;top:22px;left:0;right:0;font-size:clamp(64px,10vw,120px);font-weight:800;letter-spacing:.02em;opacity:.9}
-.sp-card b{font-size:22px}.sp-card small{opacity:.8;font-size:13px;letter-spacing:.14em}
-.sp-card kbd{margin-top:8px;opacity:.85}
-
+/* CS style menu, team select, buy wheel */
+#menu{padding:0;align-items:stretch;background:linear-gradient(90deg,rgba(5,7,10,.9),rgba(5,7,10,.62) 55%,rgba(5,7,10,.2))}
+.rail{width:62px;flex:none;display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 0;background:rgba(3,4,6,.82)}
+.rail-logo{font-weight:800;letter-spacing:.06em;color:var(--sand);margin-bottom:16px;font-size:15px}
+.rail-b{width:44px;height:44px;border:0;background:transparent;color:rgba(255,255,255,.6);border-radius:3px;display:grid;place-items:center;cursor:pointer;padding:0}
+.rail-b:hover:not(:disabled){color:#fff;background:rgba(255,255,255,.08)}.rail-b.on{color:#fff;background:rgba(255,255,255,.06);box-shadow:inset 3px 0 0 var(--sand)}.rail-b:disabled{opacity:.35;cursor:wait}
+.rail-b svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.mm{flex:1;min-width:0;max-width:1120px;display:flex;flex-direction:column;gap:10px;padding:20px clamp(14px,3vw,44px) 16px;overflow-y:auto}
+.mm-head{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap}
+.mm .logo{font-size:clamp(34px,6vh,58px);line-height:.9;text-transform:uppercase}.mm .logo span{display:inline;margin-left:.25em}
+.mm-tabs{display:flex;gap:4px;overflow-x:auto;border-bottom:1px solid rgba(255,255,255,.14);scrollbar-width:none}.mm-tabs::-webkit-scrollbar{display:none}
+.mm-tabs button{flex:none;background:none;border:0;color:rgba(255,255,255,.6);padding:9px 14px;font:700 13px/1 var(--hud);letter-spacing:.14em;text-transform:uppercase;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px}
+.mm-tabs button:hover{color:#fff}.mm-tabs button[aria-selected="true"]{color:#fff;border-bottom-color:var(--sand)}.mm-tabs .sep{flex:none;width:1px;background:rgba(255,255,255,.18);margin:6px 8px}
+.mm-info{font-size:13px;color:var(--dim);letter-spacing:.06em;min-height:16px}
+.mm-maps{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.mcard{position:relative;border:2px solid rgba(255,255,255,.16);background:rgba(8,10,14,.66);border-radius:3px;padding:12px 10px 10px;display:grid;justify-items:center;gap:5px;cursor:pointer;color:#fff;font-family:inherit;transition:transform .12s,border-color .12s,background .12s}
+.mcard:hover:not(:disabled){transform:translateY(-2px);border-color:rgba(255,255,255,.5)}
+.mcard.on{border-color:var(--sand);background:rgba(216,164,67,.12)}.mcard:disabled{opacity:.3;cursor:not-allowed}
+.mcard .bd{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;font:800 24px/1 var(--hud);color:#fff;border:3px solid rgba(255,255,255,.85)}
+.mcard b{font-size:14px;letter-spacing:.1em;text-transform:uppercase}.mcard small{font-size:11px;color:var(--dim);text-align:center;line-height:1.25}
+.mcard .ck{position:absolute;top:6px;right:6px;width:16px;height:16px;border-radius:2px;background:var(--sand);color:#17130b;display:none;place-items:center;font-size:12px;font-weight:800}.mcard.on .ck{display:grid}
+.mm-foot{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:auto;padding-top:8px}
+.mm-foot .field{flex:1 1 320px;max-width:520px}
+.mm .play{background:#4e9a4a;color:#fff;border-radius:2px;min-width:230px;justify-self:auto;padding:16px 26px}
+.mm .play:disabled{background:#3b4a3a}
+.mm .keys{display:none;background:rgba(6,8,11,.88);padding:14px;border:1px solid rgba(255,255,255,.14)}.mm .keys.on{display:grid}
+.ts{width:min(1000px,96vw);display:grid;gap:18px;justify-items:center}
+.ts-title{font:700 14px/1 var(--hud);letter-spacing:.3em;text-transform:uppercase;color:var(--dim)}
+.ts-row{display:flex;align-items:center;justify-content:center;gap:clamp(10px,3vw,40px);width:100%}
+.ts-team{position:relative;width:min(300px,34vw);display:grid;justify-items:center;gap:10px;background:none;border:0;color:#fff;cursor:pointer;font-family:inherit;padding:10px;transition:transform .15s,filter .15s}
+.ts-team:hover,.ts-team:focus-visible{transform:scale(1.05);filter:brightness(1.18);outline:0}
+.ts-team.t{color:#e8b24a}.ts-team.ct{color:#6f9fe0}
+.ts-name{font:800 clamp(14px,2.2vw,20px)/1 var(--hud);letter-spacing:.12em;text-transform:uppercase}
+.ts-emb{width:min(230px,28vw);aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.1),rgba(0,0,0,.55));padding:10%;display:grid;place-items:center;box-shadow:0 0 0 6px currentColor,0 18px 50px rgba(0,0,0,.6)}
+.ts-emb svg{width:100%;height:100%}
+.ts-meta{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.7)}
+.ts-team kbd{margin-top:2px}
+.ts-mid{flex:none;min-width:110px;max-width:190px;display:grid;gap:6px;font-size:13px;color:rgba(255,255,255,.75);text-align:center;line-height:1.35}
+.ts-bar{display:flex;gap:12px}.ts-bar button{background:rgba(8,10,14,.7);border:0;border-left:3px solid rgba(255,255,255,.3);color:#fff;padding:11px 18px;font:700 13px/1 var(--hud);letter-spacing:.14em;text-transform:uppercase;cursor:pointer;border-radius:2px}.ts-bar button:hover{border-left-color:var(--sand)}
+#buy{background:rgba(5,6,8,.88);align-items:stretch;justify-content:stretch}
+.bm{width:100%;max-width:1100px;margin:0 auto;display:grid;grid-template-rows:auto 1fr auto;gap:10px;padding:20px clamp(14px,3vw,36px) 16px;color:#fff}
+.bm-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.bm-time{font:700 14px/1 var(--hud);letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.8)}.bm-time b{color:#fff;margin-left:8px;font-size:17px}
+.bm-money{font:800 30px/1 var(--hud);color:#9fd36a;font-variant-numeric:tabular-nums}
+.bm-body{display:flex;align-items:center;justify-content:center;gap:clamp(14px,4vw,56px);min-height:0}
+.bm-wheel{width:min(330px,42vw);height:auto;flex:none}
+.bm-wheel .sec{fill:rgba(255,255,255,.1);stroke:rgba(0,0,0,.55);stroke-width:1.5;cursor:pointer;transition:fill .12s}.bm-wheel .sec:hover{fill:rgba(255,255,255,.22)}.bm-wheel .sec.on{fill:rgba(255,255,255,.34)}
+.bm-wheel text{fill:#fff;font:700 9.5px var(--hud);letter-spacing:.1em;text-anchor:middle;pointer-events:none;text-transform:uppercase}
+.bm-wheel .hub{fill:rgba(6,8,11,.9);stroke:rgba(255,255,255,.35);stroke-width:1.5}
+.bm-list{flex:1;max-width:440px;display:grid;gap:8px;align-content:center}
+.bm-cat{font:800 20px/1 var(--hud);letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.9);padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.2)}
+#items{display:grid;grid-template-columns:1fr;gap:6px}
+#items .item{display:grid;grid-template-columns:22px 1fr auto;align-items:center;gap:4px 12px;padding:9px 12px;border-radius:2px;background:rgba(10,12,16,.8);border:1px solid rgba(255,255,255,.12);position:relative}
+#items .item .k{position:static;font-size:12px;color:var(--dim)}#items .item .cat{display:none}
+#items .item b{font-size:17px}#items .item .p,#items .item .own{justify-self:end}#items .item .p{font-size:17px;color:#9fd36a}
+#items .item .meter{grid-column:2/4;font-size:10px}
+.bm-foot{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;color:var(--dim);font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.killcard{position:absolute;left:50%;bottom:calc(120px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);padding:10px 18px;background:rgba(0,0,0,.72);border-left:3px solid #d9442f;font-size:15px;letter-spacing:.04em;pointer-events:none;white-space:nowrap}.killcard b{color:#ff8a78}.killcard span{color:var(--dim);margin-left:10px}
+@media (max-height:620px){.mm .logo{font-size:30px}.mm-maps{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}.mcard{padding:8px 6px}.mcard .bd{width:38px;height:38px;font-size:17px}.mcard small{display:none}.bm-wheel{width:min(240px,36vw)}}
 /* airstrike */
 .streak{position:absolute;left:50%;bottom:calc(86px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;align-items:center;gap:10px;padding:6px 14px;background:rgba(10,12,16,.6);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.8);pointer-events:none}
 .streak i{width:9px;height:9px;border-radius:50%;border:1px solid rgba(255,255,255,.55);display:inline-block;margin-left:3px}.streak i.on{background:#e8a23a;border-color:#e8a23a}
@@ -316,6 +347,7 @@ kbd{font:600 12px/1 var(--hud);color:var(--ink);background:rgba(236,228,210,.08)
     <div class="side raid"><b id="sB">0</b><span id="oppLbl">Bot</span></div>
   </div>
   <div class="streak" id="streak" hidden></div>
+  <div class="killcard" id="killcard" hidden></div>
   <div class="radar" id="radarBox"><canvas id="radar" width="248" height="336"></canvas><small>Quarry</small></div><div id="nameTag" class="name-tag" hidden></div>
   <div id="feed"></div>
   <small id="fps" style="position:absolute;left:calc(150px + env(safe-area-inset-left,0px));top:calc(14px + env(safe-area-inset-top,0px));font-size:13px" hidden></small>
@@ -348,23 +380,33 @@ kbd{font:600 12px/1 var(--hud);color:var(--ink);background:rgba(236,228,210,.08)
 </div>
 
 <div class="screen" id="menu">
-  <div class="col">
-    <div class="eyebrow">Tactical 1v1 · Browser build · v26</div>
-    <h1 class="logo">Quarry<span>Duel</span></h1>
-    <p class="lede">Buy rounds. Real recoil. One-tap headshots. Fight a bot that hears your footsteps or play a friend on this same page. First to <span id="ledeRounds">8</span> rounds wins.</p>
-    <div class="spec"><span>Map <b id="mapName">Quarry</b></span><span>Size <b>56 × 76 m</b></span><span>Lanes <b id="mapLanes">Long · Mid · Yard</b></span></div><div class="spec" id="mapPick" style="margin-top:6px"></div><div class="spec" style="margin-top:6px"><span>Mode <b id="modeInfo"></b></span></div><div class="spec" id="modePick" style="margin-top:6px"></div>
-    <div class="field"><span class="lbl">Bot skill</span>
-      <div class="seg" id="diffSeg">
-        <button type="button" data-d="recruit" aria-pressed="false"><b>Recruit</b><small>Reacts in 600 ms</small></button>
-        <button type="button" data-d="veteran" aria-pressed="true"><b>Veteran</b><small>Reacts in 340 ms</small></button>
-        <button type="button" data-d="elite" aria-pressed="false"><b>Elite</b><small>Reacts in 200 ms</small></button>
+  <nav class="rail" aria-label="Main menu">
+    <div class="rail-logo">QD</div>
+    <button class="rail-b on" type="button" id="railPlay" title="Play"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4l13 8-13 8z"/></svg></button>
+    <button class="rail-b" id="friendBtn" type="button" disabled title="Play with friends"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6"/><circle cx="17" cy="9" r="2.4"/><path d="M16 14.2c3 0 5 2 5 5"/></svg></button>
+    <button class="rail-b" id="settingsBtn" type="button" title="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg></button>
+    <button class="rail-b" id="ctrlBtn" type="button" title="Controls"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6 10h.01M9 10h.01M12 10h.01M15 10h.01M18 10h.01M7 14h10"/></svg></button>
+    <button class="rail-b" id="creditsBtn" type="button" title="Credits"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></svg></button>
+  </nav>
+  <section class="mm">
+    <header class="mm-head"><h1 class="logo">Quarry<span>Duel</span></h1><div class="eyebrow">Browser build · v27</div></header>
+    <div class="mm-tabs" id="modePick" role="tablist" aria-label="Game mode"></div>
+    <div class="mm-info"><span id="modeInfo"></span></div>
+    <div class="mm-maps" id="mapPick" aria-label="Map"></div>
+    <div class="mm-foot">
+      <div class="field"><span class="lbl">Bot skill</span>
+        <div class="seg" id="diffSeg">
+          <button type="button" data-d="recruit" aria-pressed="false"><b>Recruit</b><small>Reacts in 600 ms</small></button>
+          <button type="button" data-d="veteran" aria-pressed="true"><b>Veteran</b><small>Reacts in 340 ms</small></button>
+          <button type="button" data-d="elite" aria-pressed="false"><b>Elite</b><small>Reacts in 200 ms</small></button>
+        </div>
       </div>
+      <button class="play" id="playBtn" disabled>Building map</button>
     </div>
-    <div class="btns"><button class="play" id="playBtn" disabled>Building map</button><button class="ghost" id="friendBtn" type="button" disabled style="padding:14px 20px;font-size:19px">Play with a friend</button></div>
     <p class="note" id="touchNote" hidden>Quarry Duel needs a mouse and keyboard. Open this page on a computer to play.</p>
     <p class="err" id="bootErr" hidden></p>
-    <div class="btns sub"><button class="ghost" id="settingsBtn" type="button">Settings</button><button class="ghost" id="ctrlBtn" type="button">Controls</button><button class="ghost" id="creditsBtn" type="button">Credits</button></div>
-    <div class="keys">
+    <span hidden><b id="mapName"></b><b id="mapLanes"></b><span id="ledeRounds">8</span></span>
+    <div class="keys" id="menuKeys">
       <div><kbd>WASD</kbd>Move</div><div><kbd>Mouse</kbd>Aim and fire</div>
       <div><kbd>C</kbd>Crouch</div>
       <div><kbd>Space</kbd>Jump</div><div><kbd>R</kbd>Reload</div>
@@ -372,7 +414,7 @@ kbd{font:600 12px/1 var(--hud);color:var(--ink);background:rgba(236,228,210,.08)
       <div><kbd>RMB</kbd> or <kbd>X</kbd>Aim / scope (change in Settings · Mouse)</div><div><kbd>Shift</kbd>Sprint</div><div><kbd>F</kbd>Inspect</div>
       <div><kbd>G</kbd>Airstrike (3 kills)</div><div><kbd>Tab</kbd>Scores</div><div><kbd>Esc</kbd>Pause</div>
     </div>
-  </div>
+  </section>
 </div>
 
 
@@ -384,12 +426,14 @@ kbd{font:600 12px/1 var(--hud);color:var(--ink);background:rgba(236,228,210,.08)
   </div>
 </div>
 <div class="screen center" id="sidePick" hidden>
-  <div class="col sp-col"><div class="eyebrow">Choose your side</div>
-    <div class="sp-cards">
-      <button type="button" class="sp-card ct" data-s="ct"><span class="sp-tag">CT</span><b>Counter-Terrorists</b><small>Hold the position</small><kbd>1</kbd></button>
-      <button type="button" class="sp-card t" data-s="t"><span class="sp-tag">T</span><b>Terrorists</b><small>Take the map</small><kbd>2</kbd></button>
+  <div class="ts">
+    <div class="ts-title">Select team</div>
+    <div class="ts-row">
+      <button type="button" class="ts-team t" data-s="t"><span class="ts-name">Terrorists</span><span class="ts-emb"><svg viewBox="-50 -50 100 100"><circle r="46" fill="none" stroke="currentColor" stroke-width="3"/><g stroke="currentColor" stroke-width="7" stroke-linecap="round"><path d="M-24 -24L24 24"/><path d="M24 -24L-24 24"/></g><circle r="9" fill="currentColor"/></svg></span><span class="ts-meta">Take the map</span><kbd>1</kbd></button>
+      <div class="ts-mid" id="tsMid"></div>
+      <button type="button" class="ts-team ct" data-s="ct"><span class="ts-name">Counter-Terrorists</span><span class="ts-emb"><svg viewBox="-50 -50 100 100"><circle r="46" fill="none" stroke="currentColor" stroke-width="3"/><path d="M0 -32L26 -20V6C26 20 12 30 0 36C-12 30 -26 20 -26 6V-20Z" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"/><path d="M0 -14l4 9h9l-7 6 3 9-9-5-9 5 3-9-7-6h9z" fill="currentColor" transform="scale(.8) translate(0 2)"/></svg></span><span class="ts-meta">Hold the position</span><kbd>2</kbd></button>
     </div>
-    <button class="ghost" id="sideBack" type="button">Back</button>
+    <div class="ts-bar"><button id="sideBack" type="button">Back <kbd>Esc</kbd></button><button id="sideAuto" type="button">Auto select <kbd>Space</kbd></button></div>
   </div>
 </div>
 <div class="screen center" id="credits" hidden>
@@ -473,10 +517,13 @@ kbd{font:600 12px/1 var(--hud);color:var(--ink);background:rgba(236,228,210,.08)
 </div>
 
 <div id="buy" hidden>
-  <div class="shop" role="dialog" aria-label="Buy menu">
-    <header><h3>Buy menu</h3><div><span class="m" id="shopMoney">$10000</span> <small id="shopTime">15 s left</small></div></header>
-    <div class="items" id="items"></div>
-    <footer><span>Press a number or click an item</span><button class="ghost" id="closeBuy">Close · B</button></footer>
+  <div class="bm" role="dialog" aria-label="Buy menu">
+    <div class="bm-top"><div class="bm-time">Buy time remaining <b id="shopTime">15 s left</b></div><div class="bm-money" id="shopMoney">$10000</div></div>
+    <div class="bm-body">
+      <svg class="bm-wheel" id="bmWheel" viewBox="-112 -112 224 224" aria-label="Weapon categories"></svg>
+      <div class="bm-list"><div class="bm-cat" id="bmCat">Rifle</div><div id="items"></div></div>
+    </div>
+    <div class="bm-foot"><span><kbd>Esc</kbd> Back</span><span>Keys 1 to 8 buy fast</span><button class="ghost" id="closeBuy">Close · B</button></div>
   </div>
 </div>
 
@@ -1819,7 +1866,7 @@ function damage0(v,a,wid,part,dist,dir){
 }
 function killed(v,a,wid,head){
   v.alive=false;v.hp=0;a.kills++;v.deaths++;if(head)a.hsKills++;
-  if(a===P&&v!==P&&wid!=='strike')strikeEarn();if(v===P)strikeLose();
+  if(a===P&&v!==P&&wid!=='strike')strikeEarn();if(v===P){strikeLose();if(a!==P)killCard(a,wid);}
   const rew=WEAPONS[wid].reward;a.money=Math.min(16000,a.money+rew);if(a===P)moneyGain(rew);
   feed(a===P,wid,head);
   if(v===P){P.deathT=0;$('#dead').classList.add('on');$('#killcard').hidden=false;$('#kcText').textContent=oppName()+' · '+WEAPONS[wid].name;
@@ -2292,7 +2339,7 @@ function nextRound(){
   if(MODE==='sniper'){sniperKit(P);sniperKit(bot);}
   if(MODE==='pistols'&&!MP.on)for(const e of[P,bot]){e.inv={1:null,2:round%2?'h50':'p9',3:'knife'};}
   if(MODE==='knives'&&!MP.on)for(const e of[P,bot]){e.inv={1:null,2:null,3:'knife'};}
-  spawnEnt(P,SPAWN_HOME,PYAW);P.pitch=0;P.deathT=0;
+  spawnEnt(P,SPAWN_HOME,PYAW);P.pitch=0;P.deathT=0;killCardHide();
   spawnEnt(bot,V3(SPAWN_AWAY.x+rand(-1.5,1.5),0,SPAWN_AWAY.z),undefined);
   Object.assign(bot,{aimYaw:BYAW,aimPitch:0,seeing:false,knowT:-99,lostT:0,path:[],goal:null,tier:0,holdLeft:0,spot:null,deathT:0,strafeDir:0,burst:0,switchT:0,heard:false});
   bot.rig.root.rotation.set(0,0,0);
@@ -2342,11 +2389,19 @@ function buy(e,it){
   else{const w=WEAPONS[it.id];e.inv[w.slot]=it.id;e.ammo[it.id]={mag:w.mag,res:w.reserve};if(e===P)switchWeapon(it.id,true);else e.cur=e.inv[1]||e.inv[2];}
   return true;
 }
+let buyCat='Rifle';const BUYSEC=[{k:'Pistol',c:['Pistol']},{k:'SMG',c:['SMG']},{k:'Rifle',c:['Rifle']},{k:'Heavy',c:['Shotgun','Sniper']},{k:'Equipment',c:['Gear']}];
+function buildWheel(){const sv=$('#bmWheel');if(!sv||sv.dataset.b)return;sv.dataset.b='1';const NS='http://www.w3.org/2000/svg',n=BUYSEC.length,R=104,r=36;let h='';
+  BUYSEC.forEach((sc,i)=>{const a0=-Math.PI/2+i*TAU/n+.015,a1=-Math.PI/2+(i+1)*TAU/n-.015,P=(rr,a)=>(rr*Math.cos(a)).toFixed(2)+' '+(rr*Math.sin(a)).toFixed(2);
+    const d='M'+P(r,a0)+' L'+P(R,a0)+' A'+R+' '+R+' 0 0 1 '+P(R,a1)+' L'+P(r,a1)+' A'+r+' '+r+' 0 0 0 '+P(r,a0)+'Z',am=(a0+a1)/2;
+    h+='<path class="sec" data-k="'+sc.k+'" d="'+d+'"/><text x="'+(70*Math.cos(am)).toFixed(1)+'" y="'+(70*Math.sin(am)+3).toFixed(1)+'">'+sc.k+'</text>';});
+  h+='<circle class="hub" r="'+(r-4)+'"/><text y="4" style="font-size:11px">Buy</text>';sv.innerHTML=h;
+  sv.querySelectorAll('.sec').forEach(p=>{const set=()=>{buyCat=p.dataset.k;renderShop();};p.addEventListener('click',set);p.addEventListener('mouseenter',set);});}
 function renderShop(){
+  buildWheel();const sec=BUYSEC.find(x=>x.k===buyCat)||BUYSEC[2];document.querySelectorAll('#bmWheel .sec').forEach(p=>p.classList.toggle('on',p.dataset.k===sec.k));$('#bmCat').textContent=sec.k;
   const el=$('#items');el.innerHTML='';
-  SHOP.forEach((it,i)=>{const w=WEAPONS[it.id];const pr=itemPrice(P,it),own=owned(P,it);const b=document.createElement('button');b.type='button';b.className='item';b.disabled=own||P.money<pr||!canBuy();
+  SHOP.forEach((it,i)=>{if(!sec.c.includes(it.cat))return;const w=WEAPONS[it.id];const pr=itemPrice(P,it),own=owned(P,it);const b=document.createElement('button');b.type='button';b.className='item';b.disabled=own||P.money<pr||!canBuy();
     const meters=w?`<div class="meter">Damage<span><i style="width:${Math.min(100,w.dmg*(w.pellets?4:1)/115*100)}%"></i></span></div><div class="meter">Rate<span><i style="width:${w.rpm/857*100}%"></i></span></div><div class="meter">Mobility<span><i style="width:${(w.speed-4)/2*100}%"></i></span></div>`:`<div class="meter">Armor<span><i style="width:100%"></i></span></div><div class="meter">Head<span><i style="width:${it.id==='helmet'?100:0}%"></i></span></div>`;
-    b.innerHTML=`<span class="k">${i+1}</span><span class="cat">${it.cat}</span><b>${w?w.name:it.name}</b>${own?'<span class="own">Owned</span>':`<span class="p">$${pr}</span>`}${meters}`;
+    b.innerHTML=`<span class="k">${i+1}</span><b>${w?w.name:it.name}</b>${own?'<span class="own">Owned</span>':`<span class="p">$${pr}</span>`}${meters}`;
     b.addEventListener('click',()=>{if(buy(P,it)){sClick(.2,1200);renderShop();refreshHUD(true);}});el.appendChild(b);});
   $('#shopMoney').textContent='$'+P.money;
 }
@@ -2703,7 +2758,7 @@ function teamSpawnPos(team,idx){const base=team==='def'?SPAWN_HOME:SPAWN_AWAY,sg
   return base.clone();}
 function teamKit(e){const r=Math.random();e.inv={1:r<.6?'k7':r<.9?'v9':'l4',2:'p9',3:'knife'};e.armor=100;e.helmet=Math.random()<.5;fillKit(e);}
 function teamRespawn(e){
-  if(e===P){spawnEnt(P,SPAWN_HOME,PYAW);P.pitch=0;P.deathT=0;P.hp=100;P.armor=Math.max(P.armor,50);fillKit(P);P.cur=P.inv[1]||P.inv[2];vm.drawT=0;buyUntil=now+10;$('#dead').classList.remove('on');$('#killcard').hidden=true;setScope(0);refreshHUD(true);return;}
+  if(e===P){killCardHide();spawnEnt(P,SPAWN_HOME,PYAW);P.pitch=0;P.deathT=0;P.hp=100;P.armor=Math.max(P.armor,50);fillKit(P);P.cur=P.inv[1]||P.inv[2];vm.drawT=0;buyUntil=now+10;$('#dead').classList.remove('on');$('#killcard').hidden=true;setScope(0);refreshHUD(true);return;}
   spawnEnt(e,teamSpawnPos(e.team,1+((Math.random()*8)|0)),undefined);Object.assign(e,BOTINIT());e.aimYaw=e.team==='def'?PYAW:BYAW;teamKit(e);e.cur=e.inv[1]||e.inv[2];
   e.seeing=false;e.tgt=null;e.vis=null;e.follow=Math.random()<.45;e.deathDir=null;e.flinch=0;e.off=false;
   if(e.rig){e.rig.root.visible=true;e.rig.root.rotation.set(0,0,0);e.rig.dropStart=null;}}
@@ -2839,12 +2894,14 @@ const STRIKE={streak:0,need:3,ready:false,open:false,sel:null,list:[],scorch:[],
 WEAPONS.strike={id:'strike',name:'Airstrike',slot:9,price:0,dmg:220,pen:1,falloff:.1,rpm:60,reward:300,noBuy:true};
 const STRIKE_R=14;
 function strikeMode(){return !SQON&&MODE!=='capture'&&MODE!=='knives'&&MODE!=='headshot';}
+function killCardHide(){const el=$('#killcard');if(el)el.hidden=true;}
+function killCard(a,wid){const el=$('#killcard');if(!el)return;const nm=MP.on?(MP.oppNick||'Friend'):(BOTS.filter(x=>!x.off).length>1?'Bot '+(BOTS.indexOf(a)+1):'Bot'),w=WEAPONS[wid]?WEAPONS[wid].name:'';el.innerHTML='Killed by <b>'+String(nm).replace(/[<>&]/g,'')+'</b><span>'+w+(a.alive?' · '+Math.max(1,Math.round(a.hp))+' HP left':'')+'</span>';el.hidden=false;}
 let strikeKey='';
 function strikeHud(){const el=$('#streak');if(!el)return;const show=strikeMode()&&inGame(),key=(show?1:0)+'|'+STRIKE.ready+'|'+STRIKE.streak;if(key===strikeKey)return;strikeKey=key;if(!show){el.hidden=true;return;}el.hidden=false;el.className='streak'+(STRIKE.ready?' ready':'');
   if(STRIKE.ready){el.innerHTML='Airstrike ready <kbd>G</kbd>';}else{let h='Airstrike ';for(let i=0;i<STRIKE.need;i++)h+='<i class="'+(i<STRIKE.streak?'on':'')+'"></i>';el.innerHTML=h;}}
 function strikeEarn(){if(!strikeMode()||STRIKE.ready)return;STRIKE.streak++;if(STRIKE.streak>=STRIKE.need){STRIKE.ready=true;banner('Airstrike ready','Press G to open the tablet','win',2.4);sClick&&sClick(.25,900);}strikeHud();}
 function strikeLose(){STRIKE.streak=0;STRIKE.ready=false;if(STRIKE.open)strikeClose(false);strikeHud();}
-function strikeReset(){STRIKE.streak=0;STRIKE.ready=false;if(STRIKE.open)strikeClose(false);for(const A of STRIKE.list){if(A.jet)scene.remove(A.jet);if(A.bomb)scene.remove(A.bomb);}STRIKE.list.length=0;for(const m of STRIKE.scorch)scene.remove(m.m);STRIKE.scorch.length=0;strikeHud();}
+function strikeReset(){killCardHide();STRIKE.streak=0;STRIKE.ready=false;if(STRIKE.open)strikeClose(false);for(const A of STRIKE.list){if(A.jet)scene.remove(A.jet);if(A.bomb)scene.remove(A.bomb);}STRIKE.list.length=0;for(const m of STRIKE.scorch)scene.remove(m.m);STRIKE.scorch.length=0;strikeHud();}
 function strikeOpen(){if(!STRIKE.ready||STRIKE.open||!strikeMode()||state!=='live'||!P.alive||buyOpen)return;
   STRIKE.open=true;STRIKE.sel=null;buyOpen=true;for(const k in keys)keys[k]=false;mouse.l=false;if(document.pointerLockElement)document.exitPointerLock();
   const cv=$('#tbMap');cv.width=Math.round(W*14);cv.height=Math.round(H*14);$('#tablet').hidden=false;$('#tbGo').disabled=true;$('#tbInfo').className='';$('#tbInfo').textContent='Tap the map to pick a target';strikeDraw();}
@@ -3021,7 +3078,6 @@ function openSettings(from){setFrom=from;if(from==='menu')$('#menu').hidden=true
 $('#setTabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;setTab=b.dataset.tab;renderSettings();});
 $('#setDone').addEventListener('click',()=>{$('#settings').hidden=true;if(setFrom==='menu')$('#menu').hidden=false;});
 $('#setReset').addEventListener('click',()=>{for(const it of SETTINGS_UI[setTab])if(it.k in DEFAULTS)settings[it.k]=DEFAULTS[it.k];if(setTab==='video')settings.gfx='high';saveSettings();applyAll();if(setTab==='video')buildComposer();renderSettings();});
-$('#ctrlBtn').addEventListener('click',()=>$('#menu .keys').classList.toggle('on'));
 $('#settingsBtn').addEventListener('click',()=>openSettings('menu'));
 function openFriends(){for(const id of['menu','over'])$('#'+id).hidden=true;$('#mpScreen').hidden=false;$('#nick').value=settings.nick||'';mpRules();renderMpList();mpStatus();mpMsg('');}
 $('#friendBtn').addEventListener('click',openFriends);
@@ -3057,12 +3113,16 @@ $('#mpCode').addEventListener('keydown',e=>{if(e.key==='Enter')mpJoin($('#mpCode
 $('#nick').addEventListener('input',e=>{settings.nick=cleanNick(e.target.value);saveSettings();setPresence({nick:myNick()});});
 $('#pauseSettings').addEventListener('click',()=>openSettings('pause'));
 function beginPlay(){initAudio();decodeSfx();$('#menu').hidden=true;$('#over').hidden=true;$('#hud').hidden=false;startMatch();requestLock();canvas.focus();}
-function showSidePick(){if(MISSION){applySide(false,false);beginPlay();return;}$('#menu').hidden=true;$('#sidePick').hidden=false;}
+function showSidePick(){if(MISSION){applySide(false,false);beginPlay();return;}$('#menu').hidden=true;$('#sidePick').hidden=false;
+  const d=settings.diff||'veteran',nm={recruit:'Recruit',veteran:'Veteran',elite:'Elite'}[d]||'Veteran';
+  $('#tsMid').innerHTML=TEAMMODE?'<b>5 vs 5</b><span>You and 4 bots</span><span>against 5 '+nm+' bots</span>':'<b>You</b><span>vs</span><b>'+nm+' bot</b>';}
 function pickSide(t){$('#sidePick').hidden=true;applySide(t,true);beginPlay();}
+$('#ctrlBtn').addEventListener('click',()=>$('#menuKeys').classList.toggle('on'));
 $('#playBtn').addEventListener('click',showSidePick);
-document.querySelectorAll('.sp-card').forEach(b=>b.addEventListener('click',()=>pickSide(b.dataset.s==='t')));
+document.querySelectorAll('.ts-team').forEach(b=>b.addEventListener('click',()=>pickSide(b.dataset.s==='t')));
 $('#sideBack').addEventListener('click',()=>{$('#sidePick').hidden=true;$('#menu').hidden=false;});
-addEventListener('keydown',e=>{if($('#sidePick').hidden)return;if(e.code==='Digit1'||e.code==='Numpad1')pickSide(false);else if(e.code==='Digit2'||e.code==='Numpad2')pickSide(true);else if(e.code==='Escape'){$('#sidePick').hidden=true;$('#menu').hidden=false;}});
+$('#sideAuto').addEventListener('click',()=>pickSide(Math.random()<.5));
+addEventListener('keydown',e=>{if($('#sidePick').hidden)return;if(e.code==='Digit1'||e.code==='Numpad1')pickSide(true);else if(e.code==='Digit2'||e.code==='Numpad2')pickSide(false);else if(e.code==='Space'){e.preventDefault();pickSide(Math.random()<.5);}else if(e.code==='Escape'){$('#sidePick').hidden=true;$('#menu').hidden=false;}});
 try{applySide(!MISSION&&localStorage.getItem('qd_side')==='t',false);}catch(e){}
 $('#mpStartNow').addEventListener('click',()=>{if(MP.role!=='host'||MP.on)return;$('#mpScreen').hidden=true;beginPlay();setTimeout(()=>{if(!MP.on)banner('Warm-up vs bot','Your friend drops in the moment they join · code '+(MP.code||''),'neutral',4);},4600);});
 $('#againBtn').addEventListener('click',()=>{if(MP.on||MP.role||SQ.net){mpEnd();state='menu';openFriends();}else beginPlay();});
@@ -3179,12 +3239,21 @@ async function boot(){
   // warm up shaders
   renderer.compile(scene,camera);renderer.compile(vmScene,vmCam);
   state='menu';pb.disabled=touchOnly;pb.textContent='Start game';$('#friendBtn').disabled=touchOnly;applyAll();
-  (function(){const mk=$('#modePick');if(!mk)return;for(const k in MODES){const b=document.createElement('button');b.type='button';b.className=k===MODE?'play':'ghost';b.style.cssText='padding:6px 14px;margin-right:8px;font-size:13px;min-width:0';b.textContent=MODES[k].name;b.title=MODES[k].info;
-      b.addEventListener('click',()=>{if(k===MODE)return;try{localStorage.setItem('qd_mode',k);if(k==='sniper')localStorage.setItem('qd_map','arena');if(k==='escape'||k==='capture')localStorage.setItem('qd_map','base');if(k==='house')localStorage.setItem('qd_map','house');if(k==='survival')localStorage.setItem('qd_map','depot');}catch(e){}const u=new URL(location.href);u.searchParams.set('mode',k);if(k==='sniper')u.searchParams.set('map','arena');if(k==='escape'||k==='capture')u.searchParams.set('map','base');if(k==='house')u.searchParams.set('map','house');if(k==='survival')u.searchParams.set('map','depot');location.href=u.toString();});mk.appendChild(b);}
-    const mi=$('#modeInfo');if(mi)mi.textContent=MODES[MODE].info;})();
-  (function(){const pk=$('#mapPick');if(!pk)return;$('#mapName').textContent=MAPS[MAPID].name;{const rs=document.querySelector('#radarBox small');if(rs)rs.textContent=MAPS[MAPID].name;}$('#mapLanes').textContent=MAPS[MAPID].lane;
-    for(const k in MAPS){if(k==='house')continue;const b=document.createElement('button');b.type='button';b.className=k===MAPID?'play':'ghost';b.style.cssText='padding:6px 14px;margin-right:8px;font-size:13px';b.textContent=MAPS[k].name;
-      b.addEventListener('click',()=>{if(k===MAPID)return;try{localStorage.setItem('qd_map',k);}catch(e){}const u=new URL(location.href);u.searchParams.set('map',k);location.href=u.toString();});pk.appendChild(b);}})();
+  (function(){
+  const mk=$('#modePick'),pk=$('#mapPick');if(!mk||!pk)return;
+  const FIX={sniper:'arena',escape:'base',capture:'base',house:'house',survival:'depot'},MISS=['escape','capture','house','survival'];
+  $('#mapName').textContent=MAPS[MAPID].name;{const rs=document.querySelector('#radarBox small');if(rs)rs.textContent=MAPS[MAPID].name;}$('#mapLanes').textContent=MAPS[MAPID].lane;
+  const go=(m,map)=>{try{if(m)localStorage.setItem('qd_mode',m);if(map)localStorage.setItem('qd_map',map);}catch(e){}const u=new URL(location.href);if(m)u.searchParams.set('mode',m);if(map)u.searchParams.set('map',map);location.href=u.toString();};
+  const order=Object.keys(MODES).filter(k=>!MISS.includes(k)).concat('|',MISS.filter(k=>MODES[k]));
+  for(const k of order){if(k==='|'){const sp=document.createElement('span');sp.className='sep';mk.appendChild(sp);continue;}const b=document.createElement('button');b.type='button';b.setAttribute('role','tab');b.setAttribute('aria-selected',String(k===MODE));b.textContent=MODES[k].name;b.title=MODES[k].info;
+    b.addEventListener('click',()=>{if(k===MODE)return;go(k,FIX[k]||null);});mk.appendChild(b);}
+  const mi=$('#modeInfo');if(mi)mi.textContent=MODES[MODE].info;
+  {const sel=mk.querySelector('[aria-selected="true"]');if(sel)mk.scrollLeft=Math.max(0,sel.offsetLeft-60);}
+  const BD={quarry:'#c9873f',depot:'#6f8aa0',arena:'#b8a35a',base:'#7d8f5f',canyon:'#c26a4a',house:'#6a5a78'};
+  for(const k in MAPS){if(k==='house'&&MODE!=='house')continue;const m=MAPS[k],b=document.createElement('button');b.type='button';b.className='mcard'+(k===MAPID?' on':'');b.disabled=!!FIX[MODE]&&FIX[MODE]!==k;
+    b.innerHTML='<span class="ck">✓</span><span class="bd" style="background:'+(BD[k]||'#667')+'">'+m.name[0]+'</span><b>'+m.name+'</b><small>'+m.lane+'</small>';
+    b.addEventListener('click',()=>{if(k===MAPID)return;go(null,k);});pk.appendChild(b);}
+})();
   initRoom().then(()=>{const sm=/^#squad-([A-Z0-9]{4})$/i.exec(location.hash);if(sm&&!touchOnly){openFriends();$('#sqCode').value=sm[1].toUpperCase();sqJoinLobby(sm[1]);return;}const m=/^#join-([A-Z0-9]{4})$/i.exec(location.hash);if(m&&MP.room&&!touchOnly){openFriends();$('#mpCode').value=m[1].toUpperCase();mpJoin(m[1]);}});
   requestAnimationFrame(frame);
   window.__qd={dims:()=>[W,H,S],STRIKE,strikeEarn,strikeOpen,strikeLaunch,rinfo:()=>renderer.info,SQ,sqOn:()=>SQON,sqStartHost,sqHostLobby,sqJoinLobby,keys,MS,damage,BOTS,playerFire,setPausedDbg:setPaused,MP,settings,setSetting,mpHost,mpJoin,openFriends,openSettings,dbg:{gripHand,curlFingers,handFrame,restorePose,orientHand,twoBoneIK,wpos,solveVMArms,setPaused,animBotReal,animBotDeathReal,vmRecoil,updateVM},vmCam,vmScene,vmRoot,REAL,RTX,GUNSPEC,ARMS:()=>ARMS,P,bot,get state(){return state;},set state(v){state=v;},scene,camera,vmModels,WEAPONS,beginPlay,startMatch,grid,settings,setScopeDbg:setScope,vm,get now(){return now;}};
