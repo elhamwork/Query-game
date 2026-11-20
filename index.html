@@ -316,7 +316,7 @@ kbd{font:600 12px/1 var(--hud);color:var(--ink);background:rgba(236,228,210,.08)
 #items .item{display:grid;grid-template-columns:22px 1fr auto;align-items:center;gap:4px 12px;padding:9px 12px;border-radius:2px;background:rgba(10,12,16,.8);border:1px solid rgba(255,255,255,.12);position:relative}
 #items .item .k{position:static;font-size:12px;color:var(--dim)}#items .item .cat{display:none}
 #items .item b{font-size:17px}#items .item .p,#items .item .own{justify-self:end}#items .item .p{font-size:17px;color:#9fd36a}
-#items .item .meter{grid-column:2/4;font-size:10px}
+#items .item .meter{grid-column:2/4;font-size:10px}#items .item *{pointer-events:none}#items .item{cursor:pointer;transition:background .1s,border-color .1s}#items .item:hover{border-color:var(--sand);background:rgba(216,164,67,.14)}#items .item:active{transform:scale(.985)}#items .item.own{opacity:.5;cursor:default}#items .item.poor{opacity:.55}#items .item.poor .p{color:#d9654f}.shopmsg{min-height:20px;font:700 13px/1.4 var(--hud);letter-spacing:.08em;text-transform:uppercase}.shopmsg.ok{color:#9fd36a}.shopmsg.bad{color:#d9654f}
 .bm-foot{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;color:var(--dim);font-size:13px;letter-spacing:.08em;text-transform:uppercase}
 .killcard{position:absolute;left:50%;bottom:calc(120px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);padding:10px 18px;background:rgba(0,0,0,.72);border-left:3px solid #d9442f;font-size:15px;letter-spacing:.04em;pointer-events:none;white-space:nowrap}.killcard b{color:#ff8a78}.killcard span{color:var(--dim);margin-left:10px}
 @media (max-height:620px){.mm .logo{font-size:30px}.mm-maps{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}.mcard{padding:8px 6px}.mcard .bd{width:38px;height:38px;font-size:17px}.mcard small{display:none}.bm-wheel{width:min(240px,36vw)}}
@@ -389,7 +389,7 @@ kbd{font:600 12px/1 var(--hud);color:var(--ink);background:rgba(236,228,210,.08)
     <button class="rail-b" id="creditsBtn" type="button" title="Credits"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></svg></button>
   </nav>
   <section class="mm">
-    <header class="mm-head"><h1 class="logo">Quarry<span>Duel</span></h1><div class="eyebrow">Browser build · v28</div></header>
+    <header class="mm-head"><h1 class="logo">Quarry<span>Duel</span></h1><div class="eyebrow">Browser build · v29</div></header>
     <div class="mm-tabs" id="modePick" role="tablist" aria-label="Game mode"></div>
     <div class="mm-info"><span id="modeInfo"></span></div>
     <div class="mm-maps" id="mapPick" aria-label="Map"></div>
@@ -521,7 +521,7 @@ kbd{font:600 12px/1 var(--hud);color:var(--ink);background:rgba(236,228,210,.08)
     <div class="bm-top"><div class="bm-time">Buy time remaining <b id="shopTime">15 s left</b></div><div class="bm-money" id="shopMoney">$10000</div></div>
     <div class="bm-body">
       <svg class="bm-wheel" id="bmWheel" viewBox="-112 -112 224 224" aria-label="Weapon categories"></svg>
-      <div class="bm-list"><div class="bm-cat" id="bmCat">Rifle</div><div id="items"></div></div>
+      <div class="bm-list"><div class="bm-cat" id="bmCat">Rifle</div><div id="items"></div><div id="shopMsg" class="shopmsg"></div></div>
     </div>
     <div class="bm-foot"><span><kbd>Esc</kbd> Back</span><span>Keys 1 to 8 buy fast</span><button class="ghost" id="closeBuy">Close · B</button></div>
   </div>
@@ -2407,12 +2407,21 @@ function buildWheel(){const sv=$('#bmWheel');if(!sv||sv.dataset.b)return;sv.data
 function renderShop(){
   buildWheel();const sec=BUYSEC.find(x=>x.k===buyCat)||BUYSEC[2];document.querySelectorAll('#bmWheel .sec').forEach(p=>p.classList.toggle('on',p.dataset.k===sec.k));$('#bmCat').textContent=sec.k;
   const el=$('#items');el.innerHTML='';
-  SHOP.forEach((it,i)=>{if(!sec.c.includes(it.cat))return;const w=WEAPONS[it.id];const pr=itemPrice(P,it),own=owned(P,it);const b=document.createElement('button');b.type='button';b.className='item';b.disabled=own||P.money<pr||!canBuy();
+  SHOP.forEach((it,i)=>{if(!sec.c.includes(it.cat))return;const w=WEAPONS[it.id];const pr=itemPrice(P,it),own=owned(P,it);const b=document.createElement('button');b.type='button';b.className='item'+(own?' own':P.money<pr?' poor':'');b.dataset.i=i;
     const meters=w?`<div class="meter">Damage<span><i style="width:${Math.min(100,w.dmg*(w.pellets?4:1)/115*100)}%"></i></span></div><div class="meter">Rate<span><i style="width:${w.rpm/857*100}%"></i></span></div><div class="meter">Mobility<span><i style="width:${(w.speed-4)/2*100}%"></i></span></div>`:`<div class="meter">Armor<span><i style="width:100%"></i></span></div><div class="meter">Head<span><i style="width:${it.id==='helmet'?100:0}%"></i></span></div>`;
     b.innerHTML=`<span class="k">${i+1}</span><b>${w?w.name:it.name}</b>${own?'<span class="own">Owned</span>':`<span class="p">$${pr}</span>`}${meters}`;
-    b.addEventListener('click',()=>{if(buy(P,it)){sClick(.2,1200);renderShop();refreshHUD(true);}});el.appendChild(b);});
+    el.appendChild(b);});
   $('#shopMoney').textContent='$'+P.money;
 }
+let shopMsgT=0;
+function shopMsg(t,bad){const m=$('#shopMsg');if(!m)return;m.textContent=t;m.className='shopmsg '+(bad?'bad':'ok');clearTimeout(shopMsgT);shopMsgT=setTimeout(()=>{m.textContent='';},1400);}
+function doBuy(i){const it=SHOP[i];if(!it||!buyOpen)return;const w=WEAPONS[it.id],nm=w?w.name:it.name;
+  if(owned(P,it)){shopMsg(nm+' already owned',1);return;}
+  const pr=itemPrice(P,it);if(P.money<pr){shopMsg('Need $'+(pr-P.money)+' more',1);return;}
+  if(buy(P,it)){sClick(.2,1200);shopMsg('Bought '+nm+' -$'+pr);renderShop();refreshHUD(true);}}
+(function(){const el=document.getElementById('items');if(!el)return;let last=0;
+  const go=e=>{const b=e.target.closest&&e.target.closest('.item');if(!b||!el.contains(b))return;e.preventDefault();const t=performance.now();if(e.type==='click'&&t-last<400)return;last=t;doBuy(+b.dataset.i);};
+  el.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'&&e.button!==0)return;go(e);});el.addEventListener('click',go);})();
 function openBuy(){if(!canBuy()||buyOpen)return;buyOpen=true;$('#buy').hidden=false;renderShop();if(document.pointerLockElement)document.exitPointerLock();for(const k in keys)keys[k]=false;mouse.l=false;}
 function closeBuy(relock=true){if(!buyOpen)return;buyOpen=false;$('#buy').hidden=true;if(relock&&(state==='freeze'||state==='live'||state==='post'))requestLock();}
 function botBuy(){
@@ -2872,7 +2881,7 @@ function refreshHUD(force){
   setT('wname',w.name);
   if(w.melee){setT('mag','—');setT('res','');}else{setT('mag',String(a.mag));setT('res','/ '+a.res);}
   $('#ammoBox').classList.toggle('empty',!w.melee&&a&&a.mag===0);$('#rl').hidden=!(P.reloading>0);
-  if(buyOpen){setT('shopMoney','$'+P.money);setT('shopTime',canBuy()?(bt+' s left'):'Buy time over');}
+  if(buyOpen&&!canBuy()){closeBuy(true);}else if(buyOpen){setT('shopMoney','$'+P.money);setT('shopTime',canBuy()?(bt+' s left'):'Buy time over');}
 }
 function updateCrosshair(){const w=WEAPONS[P.cur];const inacc=w.melee?0:inaccuracy(P,w);const px=inacc/Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*innerHeight/2;
   $('#xhair').style.setProperty('--gap',(settings.xgap+(settings.xdyn?Math.min(80,px):0))+'px');$('#xhair').style.display=(P.scoped||!P.alive||adsK>.5||sprintK>.6)?'none':'';}
@@ -2989,7 +2998,7 @@ document.addEventListener('keydown',e=>{
   if(!inGame())return;
   if(STRIKE.open){if(e.code==='Escape'||e.code==='KeyG')strikeClose(true);return;}
   if(buyOpen){if(e.code==='KeyB'){closeBuy(true);return;}if(e.code==='Escape'){closeBuy(false);setPaused(!lockFallback);return;}
-    const n=parseInt(e.key,10);if(n>=1&&n<=SHOP.length){if(buy(P,SHOP[n-1])){sClick(.2,1200);renderShop();refreshHUD(true);}}return;}
+    const n=parseInt(e.key,10);if(n>=1&&n<=SHOP.length)doBuy(n-1);return;}
   if(e.code==='Escape'&&lockFallback){setPaused(!paused);return;}
   if(paused)return;
   keys[e.code]=true;
